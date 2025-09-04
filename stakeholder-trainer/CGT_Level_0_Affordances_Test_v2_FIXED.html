@@ -1,0 +1,240 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🌳 Level 0 Affordances Test – v2</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      background-color: #f7f7f7;
+    }
+    h1 {
+      text-align: center;
+      font-size: 28px;
+    }
+    #tree {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .branch {
+      border-left: 4px solid #aaa;
+      padding-left: 20px;
+      margin: 20px 0;
+      position: relative;
+    }
+    .branch::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background: #4CAF50;
+      position: absolute;
+      left: -7px;
+      top: 0;
+      border-radius: 50%;
+    }
+    .branch.right {
+      align-self: flex-end;
+      border-left: none;
+      border-right: 4px solid #aaa;
+      padding-left: 0;
+      padding-right: 20px;
+    }
+    .branch.right::before {
+      left: auto;
+      right: -7px;
+    }
+    .leaf {
+      background: #e0f7e9;
+      padding: 6px 12px;
+      margin: 6px 0;
+      border-radius: 6px;
+      border-left: 3px solid #4CAF50;
+    }
+    .leaf.right {
+      border-left: none;
+      border-right: 3px solid #4CAF50;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 16px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background: #4285f4;
+      color: white;
+    }
+    #options {
+      text-align: center;
+    }
+    #timer {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌳 Level 0 Affordances Test – v2</h1>
+  <div id="timer">⏱️ Time: 0.00s</div>
+  <div id="tree"></div>
+  <div id="question" style="text-align: center; margin-top: 20px;">Loading…</div>
+  <div id="options"></div>
+  <div style="text-align:center;">
+    <button onclick="location.reload()">🔁 Start Again</button>
+  </div>
+
+<script>
+const stakeholders = [
+  {
+    name: "Founders",
+    affordances: [
+      "(1) Platform custodianship",
+      "(2) Roadmap control",
+      "(3) Protocol definition authority"
+    ]
+  },
+  {
+    name: "Core Developers",
+    affordances: [
+      "(1) Build MVP backend",
+      "(2) Build MVP frontend",
+      "(3) Leaderboard",
+      "(4) Claims",
+      "(5) Explorer",
+      "(6) Wallet flow",
+      "(7) Publish Protocol Schema Draft"
+    ]
+  },
+  {
+    name: "Marketing & Operations",
+    affordances: [
+      "(1) Website publishing",
+      "(2) Whitepaper comms",
+      "(3) Community touchpoints (Telegram, CMC)"
+    ]
+  },
+  {
+    name: "Players",
+    affordances: [
+      "(1) Enter main game",
+      "(2) Receive scores",
+      "(3) Claim mock rewards",
+      "(4) Appear in explorer"
+    ]
+  },
+  {
+    name: "3rd-Party GQT Creators",
+    affordances: [
+      "(1) Protocol documentation available; cannot publish GQTs but can design around the config"
+    ]
+  },
+  {
+    name: "Reward Pool Organisers",
+    affordances: [
+      "(1) View mock tournament/claim logic",
+      "(2) Can simulate fees, not route real tokens"
+    ]
+  },
+  {
+    name: "Stakers",
+    affordances: [
+      "(1) No action at MVP; staking mechanics not live, no reward influence"
+    ]
+  },
+  {
+    name: "Ecosystem Builders",
+    affordances: [
+      "(1) See structure of GQT/score claims; can architect future layers"
+    ]
+  },
+  {
+    name: "CGT Service Providers",
+    affordances: [
+      "(1) Begin identifying integration and monitoring opportunities"
+    ]
+  },
+  {
+    name: "DAO / Sub-DAOs",
+    affordances: [
+      "(1) No governance control or fund routing; passive observation only"
+    ]
+  }
+];
+
+let questions = [];
+stakeholders.forEach(s => {
+  s.affordances.forEach(a => {
+    const wrong = stakeholders
+      .filter(other => other.name !== s.name)
+      .flatMap(o => o.affordances)
+      .sort(() => 0.5 - Math.random())[0];
+    questions.push({
+      correct: a,
+      stakeholder: s.name,
+      wrong: wrong
+    });
+  });
+});
+
+let current = 0;
+let startTime = null;
+let interval;
+
+function startGame() {
+  startTime = Date.now();
+  interval = setInterval(() => {
+    const seconds = ((Date.now() - startTime) / 1000).toFixed(2);
+    document.getElementById('timer').innerText = `⏱️ Time: ${seconds}s`;
+  }, 100);
+
+  nextQuestion();
+}
+
+function nextQuestion() {
+  if (current >= questions.length) {
+    clearInterval(interval);
+    document.getElementById("question").innerText = "✅ All affordances added!";
+    document.getElementById("options").innerHTML = "";
+    return;
+  }
+
+  const q = questions[current];
+  const options = [q.correct, q.wrong].sort(() => 0.5 - Math.random());
+  document.getElementById("question").innerText = `Which affordance belongs to: ${q.stakeholder}?`;
+  document.getElementById("options").innerHTML = `
+    <button onclick="answer('${options[0]}')">${options[0]}</button>
+    <button onclick="answer('${options[1]}')">${options[1]}</button>
+  `;
+}
+
+function answer(choice) {
+  const q = questions[current];
+  if (choice === q.correct) {
+    const tree = document.getElementById("tree");
+    let branch = document.getElementById(`branch-${q.stakeholder}`);
+    if (!branch) {
+      const isRight = (tree.children.length % 2 === 1);
+      const div = document.createElement("div");
+      div.className = `branch ${isRight ? 'right' : ''}`;
+      div.id = `branch-${q.stakeholder}`;
+      div.innerHTML = `<strong>${q.stakeholder}</strong>`;
+      tree.appendChild(div);
+      branch = div;
+    }
+    const leaf = document.createElement("div");
+    leaf.className = `leaf ${branch.classList.contains("right") ? 'right' : ''}`;
+    leaf.innerText = q.correct;
+    branch.appendChild(leaf);
+    current++;
+  }
+  nextQuestion();
+}
+
+window.onload = startGame;
+</script>
+</body>
+</html>
