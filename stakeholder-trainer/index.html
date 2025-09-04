@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CGT Stakeholder Trainer</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; text-align: center; background: #f0f2f5; }
+    h1 { margin-bottom: 20px; }
+    #timer { margin-bottom: 20px; font-size: 1em; color: #555; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 400px; margin: 0 auto 30px auto; }
+    .slot { border: 1px solid #ccc; background: #fff; padding: 10px; border-radius: 5px; min-height: 30px; }
+    #prompt { font-size: 1.2em; margin: 20px 0 10px 0; }
+    .button-container { display: flex; justify-content: center; gap: 30px; margin: 10px 0; }
+    .choice-btn { padding: 10px 20px; font-size: 1em; border: none; cursor: pointer; border-radius: 6px; background: #007bff; color: white; }
+    .choice-btn:hover { background: #0056b3; }
+    #result { margin-top: 10px; font-weight: bold; }
+    #restart-btn { display: none; margin-top: 20px; padding: 10px 30px; font-size: 1em; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    #restart-btn:hover { background: #218838; }
+  </style>
+</head>
+<body>
+
+<h1>🎯 Learn CGT Stakeholders (1–10)</h1>
+<div id="timer">⏱️ Time: 0.00s</div>
+
+<div class="grid" id="slots">
+  <div class="slot" id="slot0"></div><div class="slot" id="slot5"></div>
+  <div class="slot" id="slot1"></div><div class="slot" id="slot6"></div>
+  <div class="slot" id="slot2"></div><div class="slot" id="slot7"></div>
+  <div class="slot" id="slot3"></div><div class="slot" id="slot8"></div>
+  <div class="slot" id="slot4"></div><div class="slot" id="slot9"></div>
+</div>
+
+<div id="prompt">(loading...)</div>
+<div class="button-container">
+  <button class="choice-btn" onclick="selectChoice(0)" id="btn0">Option A</button>
+  <button class="choice-btn" onclick="selectChoice(1)" id="btn1">Option B</button>
+</div>
+<div id="result"></div>
+
+<button id="restart-btn" onclick="restartGame()">🔁 Start Again</button>
+
+<script>
+const stakeholders = [
+  "Founders", "Core Developers", "Marketing & Operations", "Players",
+  "3rd-Party GQT Creators", "Reward Pool Organisers", "Stakers",
+  "Ecosystem Builders", "CGT Service Providers", "DAO / Sub-DAOs"
+];
+
+let queue, missed, currentIndex, startTime, interval, seconds;
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function startTimer() {
+  startTime = Date.now();
+  interval = setInterval(() => {
+    seconds = (Date.now() - startTime) / 1000;
+    document.getElementById("timer").innerText = "⏱️ Time: " + seconds.toFixed(2) + "s";
+  }, 100);
+}
+
+function stopTimer() { clearInterval(interval); }
+
+function nextQuestion() {
+  if (queue.length === 0 && missed.length === 0) {
+    document.getElementById("prompt").innerText = "🎉 All correct!";
+    stopTimer();
+    document.getElementById("restart-btn").style.display = "inline-block";
+    return;
+  }
+  if (queue.length === 0 && missed.length > 0) {
+    queue = [...missed]; missed = [];
+  }
+
+  currentIndex = queue.shift();
+  const correctName = stakeholders[currentIndex];
+
+  let wrongIndex;
+  do { wrongIndex = Math.floor(Math.random() * stakeholders.length); } while (wrongIndex === currentIndex);
+
+  const pair = Math.random() > 0.5
+    ? [correctName, stakeholders[wrongIndex]]
+    : [stakeholders[wrongIndex], correctName];
+
+  document.getElementById("prompt").innerText = `Who is Stakeholder #${currentIndex + 1}?`;
+  document.getElementById("btn0").innerText = pair[0];
+  document.getElementById("btn1").innerText = pair[1];
+  document.getElementById("btn0").dataset.choice = pair[0];
+  document.getElementById("btn1").dataset.choice = pair[1];
+  document.getElementById("result").innerText = "";
+}
+
+function selectChoice(index) {
+  if (!startTime) startTimer();
+  const selected = document.getElementById("btn" + index).dataset.choice;
+  const correctName = stakeholders[currentIndex];
+  if (selected === correctName) {
+    document.getElementById("slot" + currentIndex).innerText = correctName;
+    nextQuestion();
+  } else {
+    document.getElementById("result").innerText = "❌ Try again!";
+    missed.push(currentIndex);
+    nextQuestion();
+  }
+}
+
+function restartGame() {
+  queue = [...Array(10).keys()];
+  missed = [];
+  currentIndex = null;
+  startTime = null;
+  seconds = 0;
+  clearInterval(interval);
+  document.getElementById("timer").innerText = "⏱️ Time: 0.00s";
+  document.getElementById("restart-btn").style.display = "none";
+  for (let i = 0; i < 10; i++) {
+    document.getElementById("slot" + i).innerText = "";
+  }
+  nextQuestion();
+}
+
+restartGame();
+</script>
+
+</body>
+</html>
