@@ -1,0 +1,192 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌳 Level 0 Affordances Test – v5.1</title>
+  <style>
+    :root{
+      --green:#2e7d32;
+      --leaf:#d9f5df;
+      --bg:#eef3ef;
+      --blue:#2f80ed;
+      --shadow:0 2px 6px rgba(0,0,0,.08);
+    }
+    html,body{margin:0;padding:0;background:var(--bg);font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;color:#111}
+    header{padding:20px 16px;text-align:center}
+    h1{margin:0 0 6px;font-size:28px}
+    #timer{font-size:16px;opacity:.8}
+    #stage{max-width:900px;margin:0 auto;padding:0 16px 80px}
+    .branch{background:#fff;border-radius:12px;box-shadow:var(--shadow);padding:14px 14px 12px;margin:18px 0;position:relative}
+    .branch:before{content:"";position:absolute;left:18px;top:-18px;width:2px;height:18px;background:var(--green)}
+    .branch.right{margin-left:auto}
+    .title{display:flex;align-items:center;gap:8px;font-weight:700;color:#123; margin:2px 0 10px}
+    .title .dot{width:10px;height:10px;background:var(--green);border-radius:50%}
+    .leaf{background:var(--leaf);border-left:4px solid var(--green);border-radius:8px;padding:10px 12px;margin:8px 4px;box-shadow:var(--shadow);animation:pop .25s ease-out}
+    .branch.right .leaf{border-left:none;border-right:4px solid var(--green)}
+    .connector{width:2px;height:16px;background:var(--green);margin:0 0 0 22px}
+    .branch.right .connector{margin:0 22px 0 0; margin-left:auto}
+    @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    /* Inline question card (anchors directly after last leaf) */
+    #questionCard{background:#ffffff;border-radius:12px;box-shadow:var(--shadow);padding:12px;margin:8px 4px}
+    #questionCard .qtext{font-weight:700;margin-bottom:10px;text-align:center}
+    #questionCard .choices{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    #questionCard .choices button{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-size:16px;box-shadow:var(--shadow)}
+    #questionCard .choices button:active{transform:translateY(1px)}
+    #questionCard .q-connector{width:2px;height:16px;background:var(--green);margin:0 0 8px 22px}
+    .branch.right #questionCard .q-connector{margin:0 22px 8px 0; margin-left:auto}
+
+    /* Start Again button (high contrast) */
+    #restart{display:block;margin:16px auto 0;background:#28a745;color:#fff;border:none;border-radius:10px;padding:12px 18px;font-size:16px;box-shadow:var(--shadow)}
+    #restart:active{transform:translateY(1px)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌳 Level 0 Affordances Test – v5.1</h1>
+    <div id="timer">⏱️ Time: 0.00s</div>
+  </header>
+
+  <main id="stage"></main>
+
+  <script>
+const DATA = [
+  ["Founders", ["Platform custodianship","Roadmap control","Protocol definition authority"], "🌿"],
+  ["Core Developers", ["Build MVP backend","Build MVP frontend","Leaderboard","Claims","Explorer","Wallet flow","Publish Protocol Schema Draft"], "🧑‍💻"],
+  ["Marketing & Operations", ["Website publishing","Whitepaper comms","Community touchpoints (Telegram, CMC)"], "📣"],
+  ["Players", ["Enter main game","Receive scores","Claim mock rewards","Appear in explorer"], "🎮"],
+  ["3rd-Party GQT Creators", ["Protocol documentation available; cannot publish GQTs but can design around the config"], "🧩"],
+  ["Reward Pool Organisers", ["View mock tournament/claim logic","Can simulate fees, not route real tokens"], "🏆"],
+  ["Stakers", ["No action at MVP; staking mechanics not live, no reward influence"], "🪙"],
+  ["Ecosystem Builders", ["See structure of GQT/score claims; can architect future layers"], "🏗️"],
+  ["CGT Service Providers", ["Begin identifying integration and monitoring opportunities"], "🛠️"],
+  ["DAO / Sub-DAOs", ["No governance control or fund routing; passive observation only"], "🏛️"]
+];
+
+let sIdx=0, aIdx=0;
+let startTime=0, tHandle=null;
+const stage = document.getElementById('stage');
+const timer = document.getElementById('timer');
+
+function startTimer(){
+  startTime = performance.now();
+  clearInterval(tHandle);
+  tHandle = setInterval(()=>{
+    const sec = (performance.now()-startTime)/1000;
+    timer.textContent = `⏱️ Time: ${sec.toFixed(2)}s`;
+  },100);
+}
+
+function randomWrongAffordance(excludeStakeholderIndex){
+  const pool = [];
+  DATA.forEach((row,i)=>{ if(i!==excludeStakeholderIndex) pool.push(...row[1]) });
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function ensureBranch(){
+  const id = `branch-${sIdx}`;
+  let block = document.getElementById(id);
+  if(block) return block;
+  const sideRight = (sIdx%2===1);
+  block = document.createElement('div');
+  block.className = 'branch'+(sideRight?' right':'');
+  block.id = id;
+  block.innerHTML = `<div class="title"><span class="dot"></span>${DATA[sIdx][2]} <span>${DATA[sIdx][0]}</span></div>`;
+  stage.appendChild(block);
+  return block;
+}
+
+function mountQuestionCard(block, questionText, choices){
+  // remove existing question card if any
+  const existing = document.getElementById('questionCard');
+  if(existing && existing.parentElement) existing.parentElement.removeChild(existing);
+
+  const card = document.createElement('div');
+  card.id='questionCard';
+  card.innerHTML = `
+    <div class="q-connector"></div>
+    <div class="qtext">${questionText}</div>
+    <div class="choices"></div>
+    <button id="restart">🔁 Start Again</button>
+  `;
+  block.appendChild(card);
+
+  const choicesDiv = card.querySelector('.choices');
+  choices.forEach(({label, onClick})=>{
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.onclick = onClick;
+    choicesDiv.appendChild(btn);
+  });
+
+  // restart handler
+  card.querySelector('#restart').onclick = reset;
+
+  // scroll into view
+  card.scrollIntoView({behavior:'smooth', block:'end'});
+}
+
+function ask(){
+  if(sIdx>=DATA.length){
+    const done = document.createElement('div');
+    done.className='branch';
+    done.innerHTML = `<div class="title"><span class="dot"></span>🎉 Complete</div><div class="leaf">All Level 0 affordances placed!</div>`;
+    stage.appendChild(done);
+    const existing = document.getElementById('questionCard'); if(existing) existing.remove();
+    clearInterval(tHandle);
+    done.scrollIntoView({behavior:'smooth', block:'end'});
+    return;
+  }
+  const name = DATA[sIdx][0];
+  const affordances = DATA[sIdx][1];
+  const number = aIdx+1;
+  const correct = affordances[aIdx];
+  const wrong = randomWrongAffordance(sIdx);
+
+  const block = ensureBranch();
+  const q = `What is Level 0 affordance (${number}) of ${name}?`;
+  const firstIsCorrect = Math.random()>0.5;
+  const choices = [
+    {label: firstIsCorrect? correct : wrong, onClick: ()=>choose(firstIsCorrect? correct : wrong, correct)},
+    {label: firstIsCorrect? wrong : correct, onClick: ()=>choose(firstIsCorrect? wrong : correct, correct)}
+  ];
+  mountQuestionCard(block, q, choices);
+}
+
+function choose(chosen, correct){
+  if(chosen===correct){
+    const block = ensureBranch();
+    if(aIdx>0){
+      const conn = document.createElement('div');
+      conn.className='connector';
+      block.appendChild(conn);
+    }
+    const leaf = document.createElement('div');
+    leaf.className='leaf';
+    leaf.textContent = `(${aIdx+1}) ${correct}`;
+    block.appendChild(leaf);
+    leaf.scrollIntoView({behavior:'smooth', block:'end'});
+    aIdx++;
+    if(aIdx>=DATA[sIdx][1].length){
+      sIdx++; aIdx=0;
+    }
+    setTimeout(ask, 250);
+  }else{
+    const card = document.getElementById('questionCard').querySelector('.qtext');
+    card.animate([{transform:'translateX(0)'},{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],{duration:200});
+  }
+}
+
+function reset(){
+  stage.innerHTML = '';
+  sIdx=0; aIdx=0;
+  startTimer();
+  ask();
+}
+
+document.addEventListener('DOMContentLoaded', reset);
+  </script>
+</body>
+</html>
