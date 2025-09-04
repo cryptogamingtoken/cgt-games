@@ -1,0 +1,208 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🌳 Level 0 Affordances Test – v5</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f4f7f5;
+      padding: 1rem;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 1.8rem;
+      text-align: center;
+    }
+    .timer {
+      text-align: center;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+    .tree {
+      max-width: 600px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .branch {
+      margin: 0.5rem 0;
+      background: #e3fce1;
+      border-left: 4px solid green;
+      padding: 0.5rem 1rem;
+      position: relative;
+      animation: fadeInUp 0.5s ease-out;
+    }
+    .branch:nth-child(even) {
+      align-self: flex-end;
+      border-left: none;
+      border-right: 4px solid green;
+    }
+    .question {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    .options {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    button {
+      background-color: #339af0;
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1c7ed6;
+    }
+    .start-btn {
+      margin-top: 2rem;
+      text-align: center;
+    }
+    .start-btn button {
+      background-color: #51cf66;
+    }
+    .connector {
+      width: 2px;
+      height: 20px;
+      background-color: green;
+      margin: 0 auto;
+    }
+    @keyframes fadeInUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🌳 Level 0 Affordances Test – v5</h1>
+  <div class="timer">⏱️ Time: <span id="timer">0.00s</span></div>
+  <div id="tree" class="tree"></div>
+  <div id="question-area" class="tree"></div>
+  <div class="start-btn"><button onclick="startGame()">▶️ Start Again</button></div>
+
+  <script>
+    const data = {
+      "Founders": [
+        "Platform custodianship",
+        "Roadmap control",
+        "Protocol definition authority"
+      ],
+      "Core Developers": [
+        "Build MVP backend",
+        "Build MVP frontend",
+        "Leaderboard",
+        "Claims",
+        "Explorer",
+        "Wallet flow",
+        "Publish Protocol Schema Draft"
+      ],
+      "Marketing & Operations": [
+        "Website publishing",
+        "Whitepaper comms",
+        "Community touchpoints (Telegram, CMC)"
+      ],
+      "Players": [
+        "Enter main game",
+        "Receive scores",
+        "Claim mock rewards",
+        "Appear in explorer"
+      ],
+      "3rd-Party GQT Creators": [
+        "Protocol documentation available; cannot publish GQTs but can design around the config"
+      ],
+      "Reward Pool Organisers": [
+        "View mock tournament/claim logic",
+        "Can simulate fees, not route real tokens"
+      ],
+      "Stakers": [
+        "No action at MVP; staking mechanics not live, no reward influence"
+      ],
+      "Ecosystem Builders": [
+        "See structure of GQT/score claims; can architect future layers"
+      ],
+      "CGT Service Providers": [
+        "Begin identifying integration and monitoring opportunities"
+      ],
+      "DAO / Sub-DAOs": [
+        "No governance control or fund routing; passive observation only"
+      ]
+    };
+
+    let timerInterval, startTime, allAffordances = [], current = 0;
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1)];
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function startGame() {
+      document.getElementById("tree").innerHTML = "";
+      document.getElementById("question-area").innerHTML = "";
+      current = 0;
+      allAffordances = [];
+      for (let [stakeholder, affordances] of Object.entries(data)) {
+        affordances.forEach((aff, index) => {
+          allAffordances.push({ stakeholder, aff, index: index + 1 });
+        });
+      }
+      allAffordances = shuffle(allAffordances);
+      startTime = Date.now();
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        document.getElementById("timer").textContent = elapsed.toFixed(2) + "s";
+      }, 100);
+      showNext();
+    }
+
+    function showNext() {
+      if (current >= allAffordances.length) return;
+      const { stakeholder, aff, index } = allAffordances[current];
+
+      const treeDiv = document.getElementById("tree");
+      const branch = document.createElement("div");
+      branch.className = "branch";
+      branch.innerHTML = `<div class="connector"></div><div><strong>${stakeholder}</strong>: (${index}) ${aff}</div>`;
+      treeDiv.appendChild(branch);
+
+      const questionArea = document.getElementById("question-area");
+      const question = document.createElement("div");
+      question.className = "branch";
+      question.innerHTML = `<div class="question">What is Level 0 affordance (${index}) of ${stakeholder}?</div>`;
+
+      const options = document.createElement("div");
+      options.className = "options";
+
+      const correct = aff;
+      const wrong = shuffle(allAffordances.filter(a => a.stakeholder !== stakeholder))[0].aff;
+
+      [correct, wrong] = shuffle([correct, wrong]);
+      [correct, wrong].forEach(text => {
+        const btn = document.createElement("button");
+        btn.textContent = text;
+        btn.onclick = () => {
+          current++;
+          showNext();
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        };
+        options.appendChild(btn);
+      });
+
+      question.appendChild(options);
+      questionArea.appendChild(question);
+    }
+  </script>
+</body>
+</html>
