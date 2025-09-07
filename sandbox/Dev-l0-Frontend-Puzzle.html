@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT – Dev L0: Frontend MVP • Sliding Puzzle</title>
+<style>
+  :root{
+    --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+    --panel:#0f1621; --panel2:#101827; --line:#233247;
+    --accent:#6be9cd; --teal1:#18B8C7; --teal2:#0EA0AC;
+    --good:#5ee1a2; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);font:15px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,Roboto,Arial}
+  header{position:sticky;top:0;z-index:5;padding:.75rem 1rem;background:rgba(11,15,20,.82);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid #17202b;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+  .brand{font-weight:800}
+  .chip{color:var(--muted)}
+  .hud{margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap}
+  .pill{padding:.25rem .6rem;border:1px solid #243246;border-radius:999px;color:var(--muted);font-size:.85rem}
+  main{max-width:980px;margin:0 auto;padding:1rem .8rem 4rem;display:grid;gap:1rem}
+  .stage{background:linear-gradient(180deg,#192334,#131c29);border:1px solid #223249;border-radius:16px;box-shadow:0 20px 48px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);padding:1rem}
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .select{appearance:none;background:#101828;border:1px solid #243246;color:var(--ink);border-radius:10px;padding:.55rem .7rem;}
+  .btn{appearance:none;border:1px solid #243246;border-radius:12px;padding:.65rem .9rem;background:#101828;color:var(--ink);font-weight:700;cursor:pointer}
+  .btn:disabled{opacity:.6;cursor:default}
+  .btn.primary{background:linear-gradient(180deg,var(--teal1),var(--teal2));border-color:#0b7e89}
+  .gridWrap{display:grid;justify-items:center;gap:1rem}
+  .board{width:min(520px,92vw);aspect-ratio:1/1;background:#0c131d;border:1px solid #223249;border-radius:14px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:4px;padding:4px;position:relative;touch-action:manipulation}
+  .tile{position:relative;border-radius:10px;background:#0f1621;border:1px solid #1f2b3b;box-shadow:0 8px 18px rgba(0,0,0,.35);cursor:pointer;overflow:hidden}
+  .tile:active{transform:translateY(1px)}
+  .empty{visibility:hidden}
+  .legend{font-size:.85rem;color:var(--muted)}
+  .foot{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
+  .out{background:#0f1621;border:1px solid #243246;border-radius:14px;padding:.8rem}
+  .title{letter-spacing:.04em;font-weight:800;margin:0 0 .25rem}
+  .rating{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
+  .badge{padding:.35rem .6rem;border:1px dashed #2b3b52;border-radius:999px;color:var(--muted);font-size:.85rem}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#101722;border:1px solid #263448;border-radius:10px;padding:.55rem .75rem;z-index:99;color:var(--ink);box-shadow:0 10px 24px rgba(0,0,0,.35)}
+  /* preview chip of current screen */
+  .chipBox{display:flex;gap:.35rem;align-items:center;padding:.35rem .55rem;border:1px solid #243246;border-radius:999px;background:#101828}
+  .dot{width:8px;height:8px;border-radius:999px;background:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Dev L0 — Frontend MVP</div>
+  <span class="chip">Sliding Puzzle • 3×3</span>
+  <div class="hud">
+    <div class="pill">Moves: <span id="moves">0</span></div>
+    <div class="pill">Time: <span id="time">0:00</span></div>
+    <div class="pill">Best: <span id="best">—</span></div>
+  </div>
+</header>
+
+<main>
+  <div class="stage">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <span class="chipBox"><span class="dot"></span><span id="screenName">—</span></span>
+        <select id="picker" class="select" title="Pick a screen">
+          <option value="random">Random (Wallet/Score/Leaderboard/Claim)</option>
+          <option value="wallet">Wallet</option>
+          <option value="score">Score</option>
+          <option value="leaderboard">Leaderboard</option>
+          <option value="claim">Claim</option>
+        </select>
+        <button class="btn" id="resetBtn">Reset</button>
+        <button class="btn" id="againBtn">Start Again</button>
+        <button class="btn" id="toggleSfx">SFX: On</button>
+      </div>
+      <button class="btn primary" id="exportBtn">📤 Export run</button>
+    </div>
+
+    <div class="gridWrap" style="margin-top:.8rem">
+      <div id="board" class="board" aria-label="Sliding puzzle board"></div>
+      <div class="legend">Slide tiles into the empty space to reconstruct the UI screen.</div>
+    </div>
+
+    <div class="out" id="results" style="display:none;margin-top:1rem">
+      <h3 class="title" id="outTitle">—</h3>
+      <div id="outDesc" style="color:var(--muted);margin:.15rem 0 .6rem">—</div>
+      <div class="rating">
+        <span class="badge" id="stars">⭐ —</span>
+        <span class="badge" id="summary">—</span>
+      </div>
+      <div class="foot" style="margin-top:.6rem">
+        <button class="btn" id="playAgain">Play again</button>
+        <button class="btn primary" id="exportBtn2">Export run</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ===================== Config: swap these for your GitHub RAW URLs ===================== */
+const PUZZLE_IMAGES = {
+  wallet: "https://raw.githubusercontent.com/your-org/your-repo/main/assets/frontend-puzzles/wallet.png",
+  score: "https://raw.githubusercontent.com/your-org/your-repo/main/assets/frontend-puzzles/score.png",
+  leaderboard: "https://raw.githubusercontent.com/your-org/your-repo/main/assets/frontend-puzzles/leaderboard.png",
+  claim: "https://raw.githubusercontent.com/your-org/your-repo/main/assets/frontend-puzzles/claim.png"
+};
+/* ======================================================================================= */
+
+const N = 3;                              // 3x3 puzzle
+const boardEl = document.getElementById('board');
+const picker = document.getElementById('picker');
+const resetBtn = document.getElementById('resetBtn');
+const againBtn = document.getElementById('againBtn');
+const toggleSfxBtn = document.getElementById('toggleSfx');
+const movesEl = document.getElementById('moves');
+const timeEl = document.getElementById('time');
+const bestEl = document.getElementById('best');
+const screenNameEl = document.getElementById('screenName');
+const results = document.getElementById('results');
+const outTitle = document.getElementById('outTitle');
+const outDesc = document.getElementById('outDesc');
+const starsEl = document.getElementById('stars');
+const summaryEl = document.getElementById('summary');
+const exportBtn = document.getElementById('exportBtn');
+const exportBtn2 = document.getElementById('exportBtn2');
+const playAgain = document.getElementById('playAgain');
+
+let tiles = [];          // array of length 9, last is empty (value N*N-1)
+let emptyIndex = N*N-1;
+let imgUrl = null;
+let currentKey = null;
+let moves = 0;
+let seconds = 0;
+let timer=null;
+let best = localStorage.getItem("cgt_puzzle_best") || "—";
+bestEl.textContent = best;
+let sfxEnabled = true;
+
+/* ------ utility ------ */
+const choice = arr => arr[Math.floor(Math.random()*arr.length)];
+function toast(msg){
+  const t=document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),1500);
+}
+function fmtTime(s){const m=Math.floor(s/60);const r=(s%60).toString().padStart(2,'0');return `${m}:${r}`;}
+function neighbors(i){
+  const r=Math.floor(i/N), c=i%N;
+  const out=[];
+  if(r>0) out.push(i-N);
+  if(r<N-1) out.push(i+N);
+  if(c>0) out.push(i-1);
+  if(c<N-1) out.push(i+1);
+  return out;
+}
+function shuffleSolvable(){
+  const arr=[...Array(N*N).keys()]; // 0..8
+  let a;
+  do {
+    a = arr.slice().sort(()=>Math.random()-0.5);
+  } while(!isSolvable(a) || isSolved(a));
+  return a;
+}
+// For odd grid: solvable if inversion count is even.
+function isSolvable(a){
+  const flat=a.filter(v=>v!==N*N-1);
+  let inv=0;
+  for(let i=0;i<flat.length-1;i++){
+    for(let j=i+1;j<flat.length;j++){
+      if(flat[i]>flat[j]) inv++;
+    }
+  }
+  return inv%2===0;
+}
+function isSolved(a){return a.every((v,i)=>v===i);}
+
+/* ------ audio ------ */
+let ctx;
+function bleep(freq=660, dur=0.05, type='triangle', gain=0.02){
+  if(!sfxEnabled) return;
+  try{
+    if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.frequency.value=freq; o.type=type;
+    g.gain.value=gain;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    setTimeout(()=>{o.stop();}, dur*1000);
+  }catch(e){}
+}
+
+/* ------ rendering ------ */
+function renderBoard(){
+  boardEl.innerHTML='';
+  boardEl.style.gridTemplateColumns=`repeat(${N},1fr)`;
+  boardEl.style.gridTemplateRows=`repeat(${N},1fr)`;
+  const size = N;
+  tiles.forEach((v, i) => {
+    const d=document.createElement('div');
+    if(v===N*N-1){ d.className='tile empty'; boardEl.appendChild(d); return; }
+    d.className='tile';
+    // background position math
+    const tileRow=Math.floor(v/size), tileCol=v%size;
+    const posX = (tileCol/(size-1))*100;
+    const posY = (tileRow/(size-1))*100;
+    d.style.backgroundImage = `url("${imgUrl}")`;
+    d.style.backgroundSize = `${size*100}% ${size*100}%`;
+    d.style.backgroundPosition = `${posX}% ${posY}%`;
+    d.setAttribute('data-idx', i);
+    d.addEventListener('click', onTileClick);
+    boardEl.appendChild(d);
+  });
+}
+function onTileClick(e){
+  const idx = parseInt(e.currentTarget.getAttribute('data-idx'),10);
+  if(neighbors(emptyIndex).includes(idx)){
+    // swap
+    [tiles[idx], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[idx]];
+    emptyIndex = idx;
+    moves++; movesEl.textContent = moves;
+    if(!timer){ timer=setInterval(()=>{seconds++; timeEl.textContent=fmtTime(seconds);},1000); }
+    renderBoard();
+    bleep(700,0.035,'triangle',0.03);
+    // win?
+    if(isSolved(tiles)){
+      clearInterval(timer); timer=null;
+      bleep(500,0.07,'sine',0.04); setTimeout(()=>bleep(650,0.07,'sine',0.04),90); setTimeout(()=>bleep(800,0.09,'sine',0.05),180);
+      showOutcome();
+    }
+  } else {
+    bleep(240,0.04,'sawtooth',0.02);
+  }
+}
+
+/* ------ game control ------ */
+function pickImage(which){
+  const keys = Object.keys(PUZZLE_IMAGES);
+  currentKey = (which==='random' || !which) ? choice(keys) : which;
+  imgUrl = PUZZLE_IMAGES[currentKey];
+  document.getElementById('screenName').textContent = currentKey[0].toUpperCase()+currentKey.slice(1);
+  picker.value = which || 'random';
+}
+function reset(shuffle=true){
+  seconds=0; moves=0;
+  timeEl.textContent='0:00'; movesEl.textContent='0';
+  results.style.display='none';
+  if(shuffle) tiles = shuffleSolvable(); else tiles = [...Array(N*N).keys()];
+  emptyIndex = tiles.indexOf(N*N-1);
+  renderBoard();
+  if(timer){clearInterval(timer); timer=null;}
+}
+function startAgain(){
+  pickImage('random');
+  reset(true);
+}
+function showOutcome(){
+  // rating logic: combine moves + time. Tweak thresholds as needed.
+  // For 3x3, a strong solve is often < 70 moves & < 90s; average < 120 moves & < 180s.
+  let stars, title, desc;
+  const good = (moves<=70 && seconds<=90);
+  const ok   = (moves<=120 && seconds<=180);
+  if(good){
+    stars="⭐️⭐️⭐️ 3/3"; title="Core Developer";
+    desc="Clean, quick, and consistent. The UI mirror comes together fast — trust through transparency.";
+  } else if(ok){
+    stars="⭐️⭐️ 2/3"; title="Average Developer";
+    desc="Solid build quality. A few rough edges, but the frontend mirrors the protocol reliably.";
+  } else {
+    stars="⭐️ 1/3"; title="Sloppy Developer";
+    desc="It works, but slowly. Tighten the loop so stakeholders can see protocol state clearly and fast.";
+  }
+  results.style.display='block';
+  outTitle.textContent = `🎯 ${title}`;
+  outDesc.textContent = desc;
+  starsEl.textContent = stars;
+  summaryEl.textContent = `Moves: ${moves} • Time: ${fmtTime(seconds)}`;
+  // persist best (by seconds first, then moves)
+  const key=`${seconds}s/${moves}m`;
+  if(best === "—"){
+    best = key;
+  } else {
+    // compare
+    const [bs, bm] = best.split('/').map(s=>parseInt(s,10));
+    const curBetter = (seconds < bs) || (seconds===bs && moves<bm);
+    if(curBetter) best = key;
+  }
+  localStorage.setItem("cgt_puzzle_best", best);
+  bestEl.textContent = best;
+}
+
+/* ------ export ------ */
+function exportRun(){
+  const payload={
+    game:"Dev L0 – Frontend MVP (Sliding Puzzle)",
+    grid:`${N}x${N}`,
+    screen: currentKey,
+    image: imgUrl,
+    moves, time_seconds: seconds,
+    rating: document.getElementById('outTitle').textContent.replace('🎯 ','') || null,
+    stars: starsEl.textContent || null,
+    timestamp: new Date().toISOString()
+  };
+  const text = JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(text).then(()=>toast("Run exported to clipboard ✅")).catch(()=>{console.log(text);toast("Copy failed. Check console.");});
+}
+
+/* ------ hooks ------ */
+picker.addEventListener('change', ()=>{
+  const val=picker.value;
+  pickImage(val);
+  reset(true);
+});
+resetBtn.addEventListener('click', ()=>reset(true));
+againBtn.addEventListener('click', startAgain);
+playAgain.addEventListener('click', startAgain);
+document.getElementById('exportBtn').addEventListener('click', exportRun);
+document.getElementById('exportBtn2').addEventListener('click', exportRun);
+toggleSfxBtn.addEventListener('click', ()=>{
+  sfxEnabled=!sfxEnabled;
+  toggleSfxBtn.textContent = `SFX: ${sfxEnabled?'On':'Off'}`;
+  if(sfxEnabled) bleep(900,0.05,'square',0.03);
+});
+
+/* ------ boot ------ */
+(function boot(){
+  // Allow ?screen=wallet|score|leaderboard|claim
+  const qp = new URLSearchParams(location.search);
+  const scr = qp.get('screen');
+  pickImage(scr||'random');
+  reset(true);
+})();
+</script>
+</body>
+</html>
