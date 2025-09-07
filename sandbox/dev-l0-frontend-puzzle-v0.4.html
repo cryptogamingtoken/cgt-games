@@ -447,50 +447,132 @@ function safeStart() {
   }
 }
 
-/* ===== Robust boot ===== */
-// 1) Prefer DOMContentLoaded. If something delays it, also listen to window.load.
-// 2) Fallback: if the board is still empty shortly after, force the picker.
-function hardBoot() {
-  try { bgm.volume = 0.35; } catch(e) {}
-  showDifficulty();
+/* ================= ROBUST BOOT (v0.4.2) ================= */
 
-  // If nothing has put tiles on the board yet, nudge after 800ms
-  setTimeout(() => {
-    const hasTiles = boardEl.children.length > 0;
-    if (!hasTiles) showDifficulty();
-  }, 800);
+// Try to find elements even if the ID differs between versions
+const diffOverlay =
+  document.getElementById('difficultyOverlay') ||
+  document.getElementById('overlay') ||
+  document.querySelector('[data-overlay]');
 
-  // Safety net: if user closed overlay and still no tiles after 1500ms, start
-  setTimeout(() => {
-    const hasTiles = boardEl.children.length > 0;
-    if (!hasTiles) safeStart();
-  }, 1500);
+const boardEl =
+  document.getElementById('board') ||
+  document.querySelector('[data-board]') ||
+  document.querySelector('.board');
+
+const musicToggle =
+  document.getElementById('musicToggle') ||
+  document.querySelector('[data-music]');
+
+const sfxToggle =
+  document.getElementById('sfxToggle') ||
+  document.querySelector('[data-sfx]');
+
+// BGM: use existing <audio id="bgm"> if present, else create one from your URL
+let bgm = window.bgm || document.getElementById('bgm');
+if (!bgm) {
+  bgm = new Audio('https://raw.githubusercontent.com/cryptogamingtoken/cgt-games/main/sandbox/assets/Xdeviruchi%20-%208-Bit%20Fantasy%20Adventure%20Music%20(64%20KBps).mp3');
+  bgm.loop = true; bgm.preload = 'auto'; bgm.crossOrigin = 'anonymous';
+  window.bgm = bgm;
+}
+let musicEnabled = true;
+
+// Helper: show overlay (supports “display:none” or class-based CSS)
+function showDifficulty() {
+  if (!diffOverlay) return;
+  if (diffOverlay.classList) diffOverlay.classList.add('show');
+  diffOverlay.style.display = 'flex';
 }
 
-// Ensure we run after DOM is really there
-document.addEventListener('DOMContentLoaded', hardBoot, { once: true });
-window.addEventListener('load', () => {
-  // Some iOS cases fire load before layout paints—reassert once
-  if (diffOverlay.style.display !== 'flex' && boardEl.children.length === 0) {
-    hardBoot();
-  }
-}, { once: true });
+// Helper: hide overlay
+function hideDifficulty() {
+  if (!diffOverlay) return;
+  diffOverlay.classList.remove?.('show');
+  diffOverlay.style.display = 'none';
+}
 
-/* ===== Global tap to unlock audio (iOS Safari friendly) ===== */
+// Helper: did tiles render?
+function boardHasTiles() {
+  return !!(boardEl && boardEl.children && boardEl.children.length > 0);
+}
+
+// Start a run regardless of old API names
+function safeStartRun() {
+  // prefer your v0.4 “startAgain”, otherwise try “reset(true)”
+  if (typeof window.startAgain === 'function') return window.startAgain();
+  if (typeof window.reset === 'function')     return window.reset(true);
+  console.warn('[BOOT] No startAgain/reset found. Add one of those to init the board.');
+}
+
+// First user gesture unlocks audio (iOS Safari)
 let audioUnlocked = false;
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  ensureAudio(); // resumes AudioContext
-  // Try to start bgm (it will only play after a gesture; this is that gesture)
-  if (musicEnabled) { bgm.play().catch(() => {}); }
+  try { bgm.volume = 0.35; } catch(e){}
+  if (musicEnabled) { bgm.play().catch(()=>{}); }
   document.removeEventListener('pointerdown', unlockAudio);
   document.removeEventListener('touchstart', unlockAudio);
   document.removeEventListener('click', unlockAudio);
 }
-document.addEventListener('pointerdown', unlockAudio, { passive: true });
-document.addEventListener('touchstart', unlockAudio, { passive: true });
-document.addEventListener('click', unlockAudio, { passive: true });
+document.addEventListener('pointerdown', unlockAudio, { passive:true });
+document.addEventListener('touchstart', unlockAudio, { passive:true });
+document.addEventListener('click', unlockAudio, { passive:true });
+
+// Bind difficulty buttons if they exist now or later
+function wireDifficultyButtons() {
+  const btns = document.querySelectorAll('[data-mode]');
+  if (!btns.length) return;
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.getAttribute('data-mode');   // practice | standard | pro
+      // your existing setter, if present
+      if (typeof window.setDifficulty === 'function') {
+        window.setDifficulty(mode);
+      } else {
+        // fallback: store on window for your timers to read
+        window.__difficulty = mode;
+      }
+      hideDifficulty();
+      safeStartRun();
+    }, { once:false });
+  });
+}
+
+// Main boot: show picker, make sure we initialize either way
+function hardBoot() {
+  try { bgm.volume = 0.35; } catch(e){}
+  showDifficulty();
+  wireDifficultyButtons();
+
+  // Fallback 1: if no tiles in ~800ms, re-show overlay (in case CSS prevented it)
+  setTimeout(() => {
+    if (!boardHasTiles()) showDifficulty();
+  }, 800);
+
+  // Fallback 2: if still no tiles in ~1500ms, force-start a run
+  setTimeout(() => {
+    if (!boardHasTiles()) safeStartRun();
+  }, 1500);
+}
+
+// Make sure we run after DOM is ready (covers iOS/WebKit timing)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', hardBoot, { once:true });
+} else {
+  hardBoot();
+}
+window.addEventListener('load', () => {
+  // If some layout timing prevented overlay paint, try once more
+  if (!boardHasTiles()) hardBoot();
+}, { once:true });
+
+/* Optional: toggle handlers if you have buttons */
+musicToggle?.addEventListener('click', () => {
+  musicEnabled = !musicEnabled;
+  if (musicEnabled) bgm.play().catch(()=>{});
+  else bgm.pause();
+});
 </script>
 </body>
 </html>
