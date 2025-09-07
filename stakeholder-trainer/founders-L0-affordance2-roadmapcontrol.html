@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CGT – Founders L0 (2): Roadmap Control – Sequencing Puzzle</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --ink:#eaf2ff; --muted:#9fb3cc;
+    --accent:#5ee1a2; --warn:#ffb84d; --danger:#ff6b6b;
+    --rope:#2a3646; --node:#324156;
+    --btn:#1d2633; --btn-hover:#243144; --btn-ring:#5ee1a2;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:linear-gradient(180deg,#0b0f14 0%,#0d131b 100%);
+    color:var(--ink); font:16px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+  }
+  header{
+    position:sticky; top:0; z-index:5;
+    background:rgba(11,15,20,.72); -webkit-backdrop-filter:saturate(140%) blur(10px); backdrop-filter:saturate(140%) blur(10px);
+    border-bottom:1px solid #17202b; padding:.75rem 1rem;
+    display:flex; align-items:center; gap:.75rem;
+  }
+  .brand{font-weight:700; letter-spacing:.3px}
+  .chip{font-size:.8rem; color:var(--muted)}
+  .meter{margin-left:auto; display:flex; align-items:center; gap:.5rem;}
+  .bar{width:140px; height:8px; background:#17202b; border-radius:999px; overflow:hidden; border:1px solid #223042}
+  .fill{height:100%; width:80%; background:linear-gradient(90deg,var(--accent),#6be9cd); transition:width .35s ease}
+  .score{font-variant-numeric:tabular-nums}
+
+  main{max-width:1000px; margin:0 auto; padding:1rem .75rem 6rem; display:grid; grid-template-columns:minmax(68px,120px) 1fr; gap:1rem;}
+  .rope-col{position:relative; padding-top:.5rem}
+  .rope{position:sticky; top:68px; height:calc(100vh - 88px); width:6px; margin:0 auto;
+        background:linear-gradient(180deg,transparent 0, var(--rope) 16px, var(--rope) calc(100% - 16px), transparent 100%);
+        border-radius:999px; box-shadow:0 0 0 1px #1e2936 inset;}
+  .stack{position:relative}
+
+  .entry{background:var(--panel); border:1px solid #1f2a37; border-radius:14px; padding:1rem; margin:0 0 1rem 0; position:relative; box-shadow:0 10px 24px rgba(0,0,0,.25);}
+  .entry::before{content:""; position:absolute; left:-18px; top:14px; width:12px; height:12px; background:var(--node); border:2px solid #233246; border-radius:50%;
+                 box-shadow:0 0 0 3px #0e141c, 0 0 0 6px #111824;}
+  .kicker{font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted)}
+  h2{margin:.25rem 0 .5rem; font-size:1.05rem}
+  p{margin:.25rem 0 .75rem; color:#cadeff; opacity:.92}
+  .note{font-size:.9rem; color:var(--muted)}
+
+  /* Board */
+  .board{display:grid; gap:1rem; grid-template-columns:1fr}
+  .pool, .timeline{background:#0e1520; border:1px dashed #2a3a4e; border-radius:14px; padding:12px;}
+  .pool h3, .timeline h3{margin:.25rem 0 .75rem; font-size:.95rem; color:#cfe6ff}
+  .items{display:flex; flex-wrap:wrap; gap:.5rem}
+  .card{
+    background:#162232; border:1px solid #263447; border-radius:12px; padding:.6rem .7rem; min-width:220px; cursor:grab; user-select:none;
+    font-weight:600; display:flex; align-items:center; gap:.5rem;
+  }
+  .card:active{cursor:grabbing}
+  .badge{font-size:.75rem; padding:.15rem .4rem; border-radius:999px; border:1px solid #3a4f68; color:#a9c3e6}
+  .slot{
+    background:#0b121c; border:2px dashed #2a3a4e; border-radius:12px; height:auto; min-height:46px; display:flex; align-items:center; padding:.4rem; gap:.5rem;
+  }
+  .slot[data-idx]:before{content:attr(data-idx); display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%;
+    background:#151d29; border:1px solid #28405a; color:#a9c3e6; font-size:.8rem; font-weight:700; margin-right:.35rem}
+  .slot.filled{border-style:solid; border-color:#345074; background:#0f1825}
+  .slot.correct{outline:2px solid #30e4aa88}
+  .slot.wrong{outline:2px solid #ff6b6b88}
+  .skull{font-size:1.4rem}
+  .controls{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem}
+  .btn{appearance:none; border:1px solid #2a3a4e; background:var(--btn); color:var(--ink);
+       padding:.7rem .9rem; border-radius:12px; cursor:pointer; font-weight:700;}
+  .btn:hover{background:var(--btn-hover); border-color:#31445c}
+  .delta{font-size:.95rem; margin-top:.5rem}
+  .delta.good{color:var(--accent)} .delta.bad{color:var(--danger)} .delta.warn{color:var(--warn)}
+  .result{margin-top:.75rem; padding:.75rem; border:1px solid #2a3a4e; border-radius:12px; background:#0f1825}
+  .titleTag{display:inline-block; margin-top:.35rem; padding:.3rem .6rem; border-radius:999px; border:1px solid #355070; color:#cde3ff; font-size:.85rem}
+
+  .fab{position:fixed; right:16px; bottom:16px; z-index:10; background:linear-gradient(180deg,#1c2735,#131b26); color:var(--ink);
+       border:1px solid #243246; border-radius:999px; padding:.9rem 1.05rem; font-weight:700; box-shadow:0 12px 24px rgba(0,0,0,.35); cursor:pointer;}
+  .fab:focus{outline:2px solid var(--btn-ring); outline-offset:3px}
+
+  @media (min-width:860px){
+    .board{grid-template-columns: 1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Founders L0 – Roadmap Control</div>
+  <span class="chip">Sequencing Puzzle • v0.1</span>
+  <div class="meter" aria-label="Roadmap Integrity">
+    <span class="score" id="scoreLabel">Integrity 80</span>
+    <div class="bar" aria-hidden="true"><div class="fill" id="scoreFill" style="width:80%"></div></div>
+  </div>
+</header>
+
+<main>
+  <div class="rope-col"><div class="rope" aria-hidden="true"></div></div>
+  <div class="stack" id="stack">
+    <section class="entry" id="intro">
+      <div class="kicker">Definition</div>
+      <h2>Stage & coordinate the release ladder</h2>
+      <p>Drag the roadmap events into the correct order to preserve sequencing and trust. Too many out-of-sync moves and the roadmap collapses <span class="skull">💀</span>.</p>
+      <p class="note">Canonical order reflects CryptoGamingToken.com’s L0 intent: prove primitives, then expand visibility.</p>
+    </section>
+
+    <section class="entry">
+      <div class="kicker">Sequencing Board</div>
+      <h2>Arrange milestones on the timeline</h2>
+
+      <div class="board" id="board">
+        <!-- Pool (shuffled cards) -->
+        <div class="pool">
+          <h3>Milestone Pool</h3>
+          <div class="items" id="pool"></div>
+        </div>
+
+        <!-- Timeline (ordered slots) -->
+        <div class="timeline">
+          <h3>Timeline</h3>
+          <div class="items" id="timeline"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="checkBtn">✅ Check Order</button>
+        <button class="btn" id="shuffleBtn">🔀 Shuffle</button>
+        <button class="btn" id="exportBtn">📤 Export Path</button>
+      </div>
+
+      <div id="feedback" class="delta"></div>
+      <div id="result" class="result" style="display:none"></div>
+    </section>
+  </div>
+</main>
+
+<button class="fab" id="restartBtn" title="Start Again">↻ Start Again</button>
+
+<script>
+/* -------------------------------------------------------------
+   CGT – Founders L0 (2): Roadmap Control – Sequencing Puzzle
+   - Drag cards from Pool to Timeline slots in canonical order.
+   - Each wrong check costs Integrity. 3 strikes = 💀 lockout.
+   - Export JSON for docs/Trello.
+-------------------------------------------------------------- */
+
+const scoreFill = document.getElementById("scoreFill");
+const scoreLabel = document.getElementById("scoreLabel");
+const poolEl   = document.getElementById("pool");
+const timelineEl = document.getElementById("timeline");
+const checkBtn = document.getElementById("checkBtn");
+const shuffleBtn = document.getElementById("shuffleBtn");
+const exportBtn = document.getElementById("exportBtn");
+const restartBtn = document.getElementById("restartBtn");
+const feedbackEl = document.getElementById("feedback");
+const resultEl = document.getElementById("result");
+
+// Canonical order (L0 intent)
+const CANONICAL = [
+  { id:"dev-mock-loop",        label:"Stabilize Mock Game Loop", badge:"Core Dev" },
+  { id:"players-mock-feedback",label:"Collect Player Mock Feedback", badge:"Players" },
+  { id:"enable-claims",        label:"Enable Leaderboard Claims", badge:"Protocol" },
+  { id:"open-gqt-publishing",  label:"Open GQT Publishing", badge:"Creators" },
+  { id:"marketing-activation", label:"Marketing Activation & Sequencing Comms", badge:"Marketing" },
+];
+
+let state = {
+  score: 80,
+  strikes: 0,
+  locked: false,
+  placements: [], // array of ids in slot order
+  actions: [],    // audit trail
+};
+
+function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
+function updateScore(delta=0){
+  state.score = clamp(state.score + delta, 0, 100);
+  scoreFill.style.width = state.score + "%";
+  scoreLabel.textContent = "Integrity " + state.score;
+}
+function toast(msg){
+  const t = document.createElement("div");
+  t.textContent = msg;
+  t.style.position="fixed"; t.style.left="50%"; t.style.bottom="24px"; t.style.transform="translateX(-50%)";
+  t.style.background="#101722"; t.style.border="1px solid #263448"; t.style.padding=".6rem .8rem";
+  t.style.borderRadius="10px"; t.style.color="var(--ink)"; t.style.boxShadow="0 10px 24px rgba(0,0,0,.35)";
+  t.style.zIndex="9999"; t.style.fontSize=".9rem";
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1600);
+}
+
+function makeCard(m){
+  const el = document.createElement("div");
+  el.className = "card"; el.draggable = true; el.dataset.id = m.id;
+  el.innerHTML = `<span class="badge">${m.badge}</span><span>${m.label}</span>`;
+  el.addEventListener("dragstart", onDragStart);
+  el.addEventListener("dragend", onDragEnd);
+  return el;
+}
+function makeSlot(idx){
+  const el = document.createElement("div");
+  el.className = "slot"; el.dataset.idx = idx+1;
+  el.addEventListener("dragover", onDragOver);
+  el.addEventListener("drop", onDrop);
+  return el;
+}
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function initBoard(){
+  // reset
+  poolEl.innerHTML = "";
+  timelineEl.innerHTML = "";
+  feedbackEl.textContent = "";
+  feedbackEl.className = "delta";
+  resultEl.style.display = "none";
+  state.strikes = 0; state.locked = false; state.actions = [];
+  updateScore(0);
+
+  // pool with shuffled cards
+  const shuffled = shuffle(CANONICAL);
+  shuffled.forEach(m => poolEl.appendChild(makeCard(m)));
+
+  // timeline slots
+  for(let i=0;i<CANONICAL.length;i++){
+    timelineEl.appendChild(makeSlot(i));
+  }
+}
+function currentPlacements(){
+  // read slot children ids
+  const ids = [];
+  timelineEl.querySelectorAll(".slot").forEach(slot=>{
+    const c = slot.querySelector(".card");
+    ids.push(c ? c.dataset.id : null);
+  });
+  return ids;
+}
+
+let dragged = null;
+function onDragStart(e){ dragged = e.currentTarget; e.dataTransfer.setData("text/plain", dragged.dataset.id); }
+function onDragEnd(){ dragged = null; }
+function onDragOver(e){ if(state.locked) return; e.preventDefault(); }
+function onDrop(e){
+  if(state.locked) return;
+  e.preventDefault();
+  const slot = e.currentTarget;
+  const existing = slot.querySelector(".card");
+  if(existing){
+    // swap back to pool
+    poolEl.appendChild(existing);
+  }
+  if(dragged){
+    slot.appendChild(dragged);
+    slot.classList.add("filled");
+  }else{
+    const id = e.dataTransfer.getData("text/plain");
+    const el = poolEl.querySelector(`.card[data-id="${id}"]`);
+    if(el){ slot.appendChild(el); slot.classList.add("filled"); }
+  }
+}
+
+function evaluate(){
+  if(state.locked) return;
+  // ensure all slots filled
+  const ids = currentPlacements();
+  const missing = ids.some(x=>!x);
+  if(missing){ toast("Fill all timeline slots before checking"); return; }
+
+  // compare
+  let wrong = 0;
+  ids.forEach((id, idx)=>{
+    const slot = timelineEl.querySelectorAll(".slot")[idx];
+    const should = CANONICAL[idx].id;
+    if(id === should){
+      slot.classList.remove("wrong"); slot.classList.add("correct");
+    }else{
+      slot.classList.remove("correct"); slot.classList.add("wrong");
+      wrong++;
+    }
+  });
+
+  // scoring logic
+  if(wrong === 0){
+    feedbackEl.className = "delta good";
+    feedbackEl.textContent = "✔ Perfect sequencing. Integrity +6";
+    updateScore(+6);
+    finalize("perfect", ids);
+  } else if (wrong <= 2){
+    feedbackEl.className = "delta warn";
+    feedbackEl.textContent = `⚠ ${wrong} out-of-sequence. Integrity -${wrong*4}`;
+    updateScore(-(wrong*4));
+    state.strikes += wrong;
+    checkStrikes(ids);
+  } else {
+    feedbackEl.className = "delta bad";
+    feedbackEl.textContent = `✖ ${wrong} mismatches. Integrity -${wrong*5}`;
+    updateScore(-(wrong*5));
+    state.strikes += wrong;
+    checkStrikes(ids);
+  }
+
+  state.actions.push({type:"check", wrong, placements:ids, score:state.score, ts:new Date().toISOString()});
+}
+
+function checkStrikes(ids){
+  if(state.strikes >= 3){
+    state.locked = true;
+    feedbackEl.className = "delta bad";
+    feedbackEl.innerHTML = `💀 Roadmap collapsed: too many out-of-sync moves (strikes ${state.strikes}).`;
+    finalize("collapsed", ids, true);
+  }else{
+    toast(`Strikes: ${state.strikes}/3`);
+  }
+}
+
+function titleFromScore(score, collapsed){
+  if(collapsed) return "Timeline Wrecker";
+  if(score >= 90) return "Architect of Trust";
+  if(score >= 75) return "Timekeeper";
+  if(score >= 55) return "Scrambler";
+  return "Firefighter";
+}
+
+function finalize(status, ids, collapsed=false){
+  state.locked = true;
+  const title = titleFromScore(state.score, collapsed);
+  resultEl.style.display = "block";
+  resultEl.innerHTML = `
+    <div><strong>Outcome:</strong> <span class="titleTag">${title}</span></div>
+    <div class="note" style="margin-top:.4rem">Your sequence vs canonical:</div>
+    <ol style="margin:.4rem 0 .6rem 1.2rem; padding:0">
+      ${ids.map((id,i)=>{
+        const you = CANONICAL.find(x=>x.id===id).label;
+        const should = CANONICAL[i].label;
+        const ok = (id===CANONICAL[i].id);
+        return `<li>${ok?'✅':'❌'} <em>${you}</em> <span class="note">(${ok?'correct':'should be → '+should})</span></li>`;
+      }).join('')}
+    </ol>
+    <div class="note">Integrity: ${state.score} • Strikes: ${state.strikes}</div>
+  `;
+}
+
+function doExport(){
+  const ids = currentPlacements();
+  const payload = {
+    game: "CGT – Founders L0 (2) Roadmap Control – Sequencing Puzzle",
+    integrity: state.score,
+    strikes: state.strikes,
+    placements: ids,
+    placements_labels: ids.map(id => (CANONICAL.find(x=>x.id===id)||{}).label),
+    canonical: CANONICAL.map(x=>x.id),
+    canonical_labels: CANONICAL.map(x=>x.label),
+    actions: state.actions,
+    timestamp: new Date().toISOString()
+  };
+  const text = JSON.stringify(payload, null, 2);
+  navigator.clipboard.writeText(text).then(()=>toast("Export copied ✅"))
+    .catch(()=>{ toast("Copy failed. Check console."); console.log(text); });
+}
+
+function shufflePool(){
+  if(state.locked){ toast("Game finished. Restart to play again."); return; }
+  // move all cards back to pool then reshuffle
+  timelineEl.querySelectorAll(".slot").forEach(s=>{
+    const c = s.querySelector(".card");
+    if(c) poolEl.appendChild(c);
+    s.classList.remove("filled","correct","wrong");
+  });
+  const nodes = Array.from(poolEl.querySelectorAll(".card"));
+  nodes.forEach(n=>n.remove());
+  shuffle(CANONICAL).forEach(m=>{
+    const el = makeCard(m);
+    poolEl.appendChild(el);
+  });
+  feedbackEl.textContent = "";
+}
+
+function restart(){
+  state.score = 80; state.strikes = 0; state.locked = false; state.actions = [];
+  updateScore(0);
+  initBoard();
+}
+
+// events
+checkBtn.addEventListener("click", evaluate);
+shuffleBtn.addEventListener("click", shufflePool);
+exportBtn.addEventListener("click", doExport);
+restartBtn.addEventListener("click", restart);
+
+// boot
+initBoard();
+</script>
+</body>
+</html>
