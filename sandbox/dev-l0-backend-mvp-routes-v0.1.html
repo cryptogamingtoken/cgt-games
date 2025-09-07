@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT – Core Devs L0: MVP Backend (Request Router)</title>
+<style>
+:root{
+  --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+  --panel:#101722; --border:#1f2a39;
+  --good:#5ee1a2; --warn:#ffd166; --bad:#ff6b6b; --accent:#6be9cd;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+     font:16px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+header{position:sticky;top:0;z-index:5;padding:.7rem 1rem;background:rgba(9,12,18,.72);
+       backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #121a25;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+.brand{font-weight:800}
+.chip{color:var(--muted);font-size:.85rem}
+.hud{margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap}
+.pill{border:1px solid #1a2636;border-radius:999px;padding:.25rem .6rem;color:var(--muted);font-size:.85rem}
+.wrap{max-width:860px;margin:0 auto;padding:1rem .9rem 3.4rem}
+.stage{background:linear-gradient(180deg,#111a26,#0f1621);border:1px solid var(--border);
+       border-radius:16px;box-shadow:0 18px 40px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
+       padding:1rem;display:grid;gap:1rem}
+.progress{height:8px;background:#132032;border:1px solid #223249;border-radius:999px;overflow:hidden}
+.bar{height:100%;width:0;background:linear-gradient(90deg,#4be3c2,#6be9cd)}
+.note{color:var(--muted);font-size:.9rem}
+.card{background:#0e1520;border:1px solid #1d2a3d;border-radius:14px;padding:1.1rem}
+.card.enter{animation:slideIn .35s ease}
+@keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.tag{font-size:.78rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.req{font-size:1.05rem;margin:.35rem 0 .1rem}
+.answers{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem}
+.answers .btn.wide{grid-column:1/-1}
+.btn{appearance:none;border:1px solid #233247;background:#121a28;color:#eaf2ff;border-radius:12px;
+     padding:.8rem .7rem;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+.btn:active{transform:translateY(1px)}
+.btn:hover{border-color:#2a3a52}
+.btn.score{background:linear-gradient(180deg,#14312a,#0f241c);border-color:#1b4c39}       /* Score */
+.btn.board{background:linear-gradient(180deg,#192a42,#121b2b);border-color:#234166}       /* Leaderboard */
+.btn.claim{background:linear-gradient(180deg,#3a1a1e,#2a1013);border-color:#4b2329}       /* Claim */
+.btn.session{background:linear-gradient(180deg,#2a2a10,#1a1a0c);border-color:#3a3a18}     /* Session */
+.btn.na{background:linear-gradient(180deg,#262634,#1b1b27);border-color:#35354b}           /* Not L0 */
+.btn[disabled]{opacity:.6;cursor:not-allowed}
+
+.end{display:none}
+.end h2{margin:.2rem 0 .35rem}
+.grades{display:flex;gap:.5rem;flex-wrap:wrap}
+.pill2{padding:.35rem .6rem;border:1px dashed #2c3b50;border-radius:999px;color:var(--muted);font-size:.85rem}
+.ctaRow{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.8rem}
+.cta{padding:.6rem .8rem;border-radius:10px;border:1px solid #223249;background:#0f1824;color:#eaf2ff;font-weight:800;cursor:pointer}
+.centerRow{display:flex;justify-content:center}
+.feedback{min-height:1.2em;margin:.55rem 0 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Core Devs L0 – MVP Backend (Request Router)</div>
+  <span class="chip">Prototype v0.1 • Route picking</span>
+  <div class="hud">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Q: <span id="qIdx">0</span>/<span id="qTotal">0</span></div>
+    <div class="pill">Catastrophes: <span id="cats">0</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="stage" id="game">
+    <div>
+      <div class="tag">How it works</div>
+      <p class="note">Classify each <b>incoming request</b> to the correct L0 backend route: <b>Score</b>, <b>Leaderboard</b>, <b>Claim</b>, <b>Session</b>, or <b>Not L0</b> (out of scope for this affordance).</p>
+    </div>
+    <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
+
+    <article class="card" id="card">
+      <div class="tag" id="cat">—</div>
+      <div class="req" id="reqText">—</div>
+      <div class="answers">
+        <button class="btn score"   data-ans="score">POST /api/score</button>
+        <button class="btn board"   data-ans="leaderboard">GET /api/leaderboard</button>
+        <button class="btn claim"   data-ans="claim">POST /api/claim</button>
+        <button class="btn session" data-ans="session">POST /api/session/connect</button>
+        <button class="btn na wide" data-ans="na">Not L0 (out of scope)</button>
+      </div>
+      <p class="note feedback" id="feedback"></p>
+    </article>
+
+    <p class="note">L0 scope: mock sessions, score capture, leaderboard reads, claim writes, basic health/jobs. <b>Not L0:</b> real token mints, on-chain writes, creator publishing UIs.</p>
+
+    <div class="centerRow"><button class="cta" id="reset">↻ Reset run</button></div>
+  </section>
+
+  <section class="stage end" id="end">
+    <div class="tag">Outcome</div>
+    <h2 id="endTitle">—</h2>
+    <p id="endMsg" class="note">—</p>
+    <div class="grades" style="margin:.4rem 0 .2rem">
+      <span class="pill2">Score: <span id="outScore">0</span></span>
+      <span class="pill2">Correct: <span id="outCorrect">0</span></span>
+      <span class="pill2">Errors: <span id="outErrors">0</span></span>
+      <span class="pill2">Catastrophes: <span id="outCats">0</span></span>
+      <span class="pill2">Total Qs: <span id="outTotal">0</span></span>
+    </div>
+    <div class="tag" style="margin-top:.4rem">Badges</div>
+    <div class="grades" id="badges"></div>
+
+    <div class="ctaRow">
+      <button class="cta" id="playAgain">↻ Play again</button>
+      <button class="cta" id="export">📤 Export run</button>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ----------- Request bank ----------- */
+const BANK = [
+  // Score
+  {id:"s1", cat:"Gameplay → Score", ans:"score",
+   text:"Submit the player’s round result with wallet + gameBlockId."},
+  {id:"s2", cat:"Gameplay → Score", ans:"score",
+   text:"Record 98,220 pts from mock session; prevent duplicate submit."},
+  {id:"s3", cat:"Gameplay → Score", ans:"score",
+   text:"Persist score + checksum + timestamp for ranking."},
+
+  // Leaderboard
+  {id:"l1", cat:"Visibility → Leaderboard", ans:"leaderboard",
+   text:"Fetch top 50 for current gameBlock with rank & wallet."},
+  {id:"l2", cat:"Visibility → Leaderboard", ans:"leaderboard",
+   text:"Return player rank by wallet for block=432."},
+  {id:"l3", cat:"Visibility → Leaderboard", ans:"leaderboard",
+   text:"List leaderboard page 2 with basic filters."},
+
+  // Claim
+  {id:"c1", cat:"Rewards → Claim", ans:"claim",
+   text:"Redeem reward for (wallet, gameBlockId) if eligible."},
+  {id:"c2", cat:"Rewards → Claim", ans:"claim",
+   text:"Create claim record with mock txHash; deny duplicates."},
+  {id:"c3", cat:"Rewards → Claim", ans:"claim",
+   text:"Attempt claim after expiry → return error: expired."},
+
+  // Session
+  {id:"w1", cat:"Identity → Session", ans:"session",
+   text:"Connect mock wallet; set session.isGated = true."},
+  {id:"w2", cat:"Identity → Session", ans:"session",
+   text:"Refresh session; restore wallet address for gameplay."},
+  {id:"w3", cat:"Identity → Session", ans:"session",
+   text:"Disconnect / clear session so gameplay is blocked."},
+
+  // Useful extras (we still map them within L0)
+  {id:"x1", cat:"Ops → Health", ans:"leaderboard", // treat as read-only L0 GET bucket
+   text:"GET service health: return ok:true, version, uptime."},
+  {id:"x2", cat:"Ops → Jobs", ans:"claim", // write path – closest to claim/job writes
+   text:"Finalize gameBlock and enqueue reward calc job."},
+  {id:"x3", cat:"Data → Blocks", ans:"leaderboard",
+   text:"List recent gameBlocks with start/end times."},
+
+  // Not L0
+  {id:"n1", cat:"Out of scope", ans:"na",
+   text:"Mint real CGT to winner wallets on Solana mainnet."},
+  {id:"n2", cat:"Out of scope", ans:"na",
+   text:"Creator uploads GQT and publishes to platform index."},
+  {id:"n3", cat:"Out of scope", ans:"na",
+   text:"Treasury multisig routes live prizes to staking pool."}
+];
+
+/* ----------- Settings / scoring ----------- */
+const TAKE = 12;
+const SCOREMAP = {
+  correct: 3,
+  // Catastrophes: sending claim→score or score→claim etc.
+  catastrophes: new Set([
+    "score→claim","claim→score"
+  ]),
+  // soft wrongs (0 to -2) depending on closeness
+  penalty: {
+    score:{leaderboard:-2, session:-2, na:-3, claim:-4},
+    leaderboard:{score:-2, session:-1, na:-2, claim:-3},
+    claim:{leaderboard:-2, session:-2, na:-3, score:-4},
+    session:{leaderboard:-2, score:-2, na:-2, claim:-3},
+    na:{score:-3, leaderboard:-3, claim:-3, session:-3}
+  }
+};
+
+const END_COPY = {
+  bystander:{title:"❌ Backend Bystander",
+    msg:"Core routes missing or misrouted. Simulation stalls; no reliable play/score/claim path."},
+  spine:{title:"✅ Spine Keeper",
+    msg:"Score→Leaderboard→Claim→Session flows intact. Minor gaps but the mock system stands up."},
+  maestro:{title:"🏆 Simulation Orchestrator",
+    msg:"Fluent routing incl. jobs/health. Clean mock backbone that others can rely on."}
+};
+
+/* ----------- State ----------- */
+let deck=[], idx=0, score=0, correct=0, catastrophes=0, answered=0, locked=false;
+
+/* ----------- DOM ----------- */
+const scoreEl = document.getElementById("score");
+const qIdxEl  = document.getElementById("qIdx");
+const qTotalEl= document.getElementById("qTotal");
+const catsEl  = document.getElementById("cats");
+const bar     = document.getElementById("bar");
+const game    = document.getElementById("game");
+const end     = document.getElementById("end");
+const card    = document.getElementById("card");
+const catEl   = document.getElementById("cat");
+const reqEl   = document.getElementById("reqText");
+const fb      = document.getElementById("feedback");
+const outScore= document.getElementById("outScore");
+const outCorrect=document.getElementById("outCorrect");
+const outErrors =document.getElementById("outErrors");
+const outCats   =document.getElementById("outCats");
+const outTotal  =document.getElementById("outTotal");
+const endTitle  =document.getElementById("endTitle");
+const endMsg    =document.getElementById("endMsg");
+const badges    =document.getElementById("badges");
+
+/* ----------- Utils ----------- */
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a;}
+function sample(a,n){a=shuffle(a);return a.slice(0,Math.min(n,a.length));}
+function setBar(pct){bar.style.width=Math.max(0,Math.min(100,pct))+"%";}
+
+/* ----------- SFX ----------- */
+let AC=null;
+function ctx(){ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)(); } if(AC.state==='suspended') AC.resume(); return AC; }
+function beep(ok=true){
+  const c=ctx(), o=c.createOscillator(), g=c.createGain();
+  o.type= ok? "sine":"square"; o.frequency.value= ok? 900:170;
+  g.gain.setValueAtTime(0.0001,c.currentTime);
+  g.gain.exponentialRampToValueAtTime(ok?0.22:0.2,c.currentTime+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.25);
+  o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+0.26);
+}
+
+/* ----------- Game flow ----------- */
+function boot(){
+  deck = sample(BANK, TAKE);
+  idx=0; score=0; correct=0; catastrophes=0; answered=0; locked=false;
+  qTotalEl.textContent=deck.length; catsEl.textContent=catastrophes; scoreEl.textContent=score;
+  document.querySelectorAll(".answers .btn").forEach(b=>b.disabled=false);
+  end.style.display="none"; game.style.display="grid";
+  render();
+}
+function render(){
+  const q = deck[idx];
+  qIdxEl.textContent=idx+1; setBar((idx/deck.length)*100);
+  fb.textContent=""; catEl.textContent=q.cat; reqEl.textContent=q.text;
+  card.classList.remove("enter"); void card.offsetWidth; card.classList.add("enter");
+  locked=false;
+}
+function answer(choice){
+  if(locked || idx>=deck.length) return;
+  locked=true;
+  const q=deck[idx];
+  let delta = 0;
+  if(choice===q.ans){
+    delta=SCOREMAP.correct; correct++; fb.textContent="✅ Correct"; fb.style.color="var(--good)"; beep(true);
+  }else{
+    const pen = SCOREMAP.penalty[q.ans]?.[choice] ?? -2; delta = pen;
+    if(SCOREMAP.catastrophes.has(`${q.ans}→${choice}`)) catastrophes++;
+    fb.textContent=`✖ Route mismatch (${choice} ≠ ${q.ans})`; fb.style.color = pen<=-4? "var(--bad)":"var(--warn)"; beep(false);
+  }
+  score+=delta; answered++; scoreEl.textContent=score; catsEl.textContent=catastrophes;
+  document.querySelectorAll(".answers .btn").forEach(b=>b.disabled=true);
+  setTimeout(()=>{ idx++; if(idx>=deck.length) finish(); else {document.querySelectorAll(".answers .btn").forEach(b=>b.disabled=false); render();}},2000);
+}
+
+function finish(){
+  setBar(100);
+  // dynamic tiers
+  const max = Math.max(1, answered) * SCOREMAP.correct;
+  const ratio = score / max;
+  let tier = ratio>=0.75 ? "maestro" : (ratio>=0.5 ? "spine" : "bystander");
+  if (catastrophes>0 && tier==="maestro") tier="spine";
+
+  endTitle.textContent = END_COPY[tier].title;
+  endMsg.textContent   = END_COPY[tier].msg;
+
+  outScore.textContent=score; outCorrect.textContent=correct;
+  outErrors.textContent=(answered-correct); outCats.textContent=catastrophes;
+  outTotal.textContent=answered;
+
+  badges.innerHTML="";
+  const addBadge=t=>{const s=document.createElement("span"); s.className="pill2"; s.textContent=t; badges.appendChild(s);};
+  if(catastrophes===0) addBadge("Zero Catastrophes");
+  if(deck.some(d=>d.ans==="claim") && deck.some(d=>d.ans==="score") && deck.some(d=>d.ans==="leaderboard") && deck.some(d=>d.ans==="session") && correct/answered>=0.8) addBadge("Backbone Complete");
+  game.style.display="none"; end.style.display="grid";
+}
+
+/* wire */
+document.querySelectorAll(".answers .btn").forEach(b=>b.addEventListener("click",()=>answer(b.dataset.ans)));
+document.getElementById("playAgain").addEventListener("click",boot);
+document.getElementById("reset").addEventListener("click",boot);
+document.getElementById("export").addEventListener("click",()=>{
+  const payload={game:"Core Devs L0 – MVP Backend (Request Router)",take:deck.length,score,correct,catastrophes,answered,timestamp:new Date().toISOString(),ids:deck.map(q=>q.id)};
+  const text=JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(text).then(()=>alert("Run JSON copied ✅")).catch(()=>{console.log(text);alert("Copy failed; JSON logged to console.")});
+});
+boot();
+</script>
+</body>
+</html>
