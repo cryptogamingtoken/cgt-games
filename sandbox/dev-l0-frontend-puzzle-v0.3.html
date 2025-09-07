@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CGT • Dev L0 – Frontend MVP (Sliding Puzzle • Deadlines • Difficulty)</title>
+<style>
+  :root{
+    --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+    --panel:#0f1621; --line:#233247;
+    --accent:#6be9cd; --teal1:#18B8C7; --teal2:#0EA0AC;
+    --good:#5ee1a2; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+       font:15px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,Roboto,Arial}
+  header{position:sticky;top:0;z-index:5;padding:.75rem 1rem;background:rgba(11,15,20,.82);
+    backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid #17202b;display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
+  .brand{font-weight:800}
+  .chip{color:var(--muted)}
+  .hud{margin-left:auto;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .pill{padding:.25rem .6rem;border:1px solid #243246;border-radius:999px;color:var(--muted);font-size:.86rem}
+  .pill strong{color:var(--ink)}
+  .bigblood{font-weight:900;color:#fff;background:linear-gradient(180deg,#ee4b4b,#b61616);
+    border:1px solid #7d0e0e;border-radius:12px;padding:.4rem .7rem;letter-spacing:.02em;box-shadow:0 6px 16px rgba(178,21,21,.35)}
+  main{max-width:980px;margin:0 auto;padding:1rem .9rem 4rem;display:grid;gap:1rem}
+  .stage{background:linear-gradient(180deg,#192334,#131c29);border:1px solid #223249;border-radius:16px;
+    box-shadow:0 20px 48px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);padding:1rem}
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .select{appearance:none;background:#101828;border:1px solid #243246;color:var(--ink);border-radius:10px;padding:.55rem .7rem;}
+  .btn{appearance:none;border:1px solid #243246;border-radius:12px;padding:.65rem .9rem;background:#101828;color:var(--ink);font-weight:700;cursor:pointer}
+  .btn.primary{background:linear-gradient(180deg,var(--teal1),var(--teal2));border-color:#0b7e89}
+  .gridWrap{display:grid;justify-items:center;gap:1rem}
+  .board{width:min(520px,92vw);aspect-ratio:1/1;background:#0c131d;border:1px solid #223249;border-radius:14px;
+    display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:4px;padding:4px;position:relative;touch-action:manipulation}
+  .tile{position:relative;border-radius:10px;background:#0f1621;border:1px solid #1f2b3b;box-shadow:0 8px 18px rgba(0,0,0,.35);cursor:pointer;overflow:hidden}
+  .tile:active{transform:translateY(1px)}
+  .empty{visibility:hidden}
+  .legend{font-size:.86rem;color:var(--muted)}
+  .chipBox{display:flex;gap:.35rem;align-items:center;padding:.35rem .55rem;border:1px solid #243246;border-radius:999px;background:#101828}
+  .dot{width:8px;height:8px;border-radius:999px;background:var(--accent)}
+  /* Overlays */
+  .overlay{position:fixed;inset:0;background:rgba(6,8,12,.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:30}
+  .dialog{background:#0f1621;border:1px solid #253448;border-radius:16px;max-width:560px;width:92%;padding:1rem 1rem 1.1rem;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+  .dialog h3{margin:.1rem 0 .35rem}
+  .sub{color:var(--muted)}
+  .row.center{justify-content:center}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Dev L0 — Frontend MVP</div>
+  <span class="chip">Sliding Puzzle • 3×3 • Sequence of 4</span>
+  <div class="hud">
+    <div class="pill"><small>Stage</small> <strong id="stageIdx">1</strong>/4</div>
+    <div class="pill"><small>Current Deadline</small> <strong id="curLeft">60</strong>d</div>
+    <div class="bigblood">Major Deadline <span id="majLeft">240</span>d</div>
+    <button class="btn" id="toggleSfx">SFX: On</button>
+  </div>
+</header>
+
+<main>
+  <div class="stage">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="row">
+        <span class="chipBox"><span class="dot"></span><span id="screenName">—</span></span>
+        <select id="picker" class="select" title="Pick a screen">
+          <option value="sequence">Sequence (Wallet → Score → Leaderboard → Claim)</option>
+          <option value="wallet">Wallet</option>
+          <option value="score">Score</option>
+          <option value="leaderboard">Leaderboard</option>
+          <option value="claim">Claim</option>
+        </select>
+        <button class="btn" id="resetBtn">Reset</button>
+        <button class="btn" id="againBtn">Start Again</button>
+        <button class="btn primary" id="exportBtn">📤 Export run</button>
+      </div>
+    </div>
+
+    <div class="gridWrap" style="margin-top:.8rem">
+      <div id="board" class="board" aria-label="Sliding puzzle board"></div>
+      <div class="legend">Slide tiles into the empty space to reconstruct the UI. Each stage has a 60-day deadline (1s = 1d). The major deadline ticks down across all four.</div>
+    </div>
+  </div>
+</main>
+
+<!-- Stage overlay -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <h3 id="ovTitle">Stage Complete</h3>
+    <div id="ovBody" class="sub">—</div>
+    <div class="row center" style="margin-top:.6rem">
+      <button class="btn primary" id="ovContinue">Continue</button>
+      <button class="btn" id="ovCancel">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Difficulty overlay -->
+<div class="overlay" id="diffOverlay">
+  <div class="dialog">
+    <h3>Choose difficulty</h3>
+    <div class="sub" style="margin-bottom:.6rem">Deadlines scale per choice. Tap to begin (enables sound).</div>
+    <div class="row center" style="gap:.6rem;flex-wrap:wrap">
+      <button class="btn primary" data-diff="practice">🟢 Practice — 300% time</button>
+      <button class="btn primary" data-diff="standard">🟡 Standard — 200% time</button>
+      <button class="btn primary" data-diff="pro">🔴 Pro — baseline</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== Images (GitHub raw) ========== */
+const PUZZLE_IMAGES = {
+  wallet: "https://raw.githubusercontent.com/cryptogamingtoken/cgt-games/refs/heads/main/sandbox/assets/418437D2-479F-4EDB-AD1C-0C9AD6E6A34F.jpeg",
+  score: "https://raw.githubusercontent.com/cryptogamingtoken/cgt-games/refs/heads/main/sandbox/assets/DB9FEEB8-E29F-4F76-BA82-C650135B1C3B.png",
+  leaderboard: "https://raw.githubusercontent.com/cryptogamingtoken/cgt-games/refs/heads/main/sandbox/assets/04403368-2F2D-490B-9E58-77E4AD5B03E4.png",
+  claim: "https://raw.githubusercontent.com/cryptogamingtoken/cgt-games/refs/heads/main/sandbox/assets/B40DE4A0-E1A1-4553-8460-9577A553D23F.png"
+};
+const SEQUENCE = ["wallet","score","leaderboard","claim"];
+
+/* ========== Difficulty scaling ========== */
+const BASE_PER_STAGE = 60;   // seconds
+const BASE_MAJOR = 240;      // seconds
+const DIFF_MULT = { practice:3.0, standard:2.0, pro:1.0 };
+let difficulty = "pro";
+let PER_STAGE = BASE_PER_STAGE;
+let MAJOR = BASE_MAJOR;
+
+/* ========== DOM ========== */
+const boardEl = document.getElementById('board');
+const picker = document.getElementById('picker');
+const resetBtn = document.getElementById('resetBtn');
+const againBtn = document.getElementById('againBtn');
+const toggleSfxBtn = document.getElementById('toggleSfx');
+const screenNameEl = document.getElementById('screenName');
+const curLeftEl = document.getElementById('curLeft');
+const majLeftEl = document.getElementById('majLeft');
+const stageIdxEl = document.getElementById('stageIdx');
+const exportBtn = document.getElementById('exportBtn');
+const overlay = document.getElementById('overlay');
+const ovTitle = document.getElementById('ovTitle');
+const ovBody = document.getElementById('ovBody');
+const ovContinue = document.getElementById('ovContinue');
+const ovCancel = document.getElementById('ovCancel');
+const diffOverlay = document.getElementById('diffOverlay');
+
+/* ========== State ========== */
+const N = 3;
+let mode = "sequence";
+let currentKey = "wallet";
+let stageIndex = 0;
+let tiles = [];
+let emptyIndex = N*N-1;
+let imgUrl = PUZZLE_IMAGES[currentKey];
+
+let curLeft = BASE_PER_STAGE;
+let majLeft = BASE_MAJOR;
+let sfxEnabled = true;
+let timersRunning = false;
+let tickTimer = null;
+let paused = false;
+
+let runLog = [];
+
+/* ========== Web Audio (SFX) ========== */
+let ctx;
+function ensureAudio(){
+  try{
+    if(!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)();
+    if(ctx.state === "suspended") ctx.resume();
+  }catch(e){}
+}
+function bleep(freq=660, dur=0.05, type='triangle', gain=0.02){
+  if(!sfxEnabled) return;
+  try{
+    ensureAudio();
+    if(!ctx || ctx.state!=="running") return; // still blocked
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.frequency.value=freq; o.type=type;
+    g.gain.value=gain;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    setTimeout(()=>o.stop(), dur*1000);
+  }catch(e){}
+}
+
+/* ========== Helpers ========== */
+function setScreenName(name){ screenNameEl.textContent = name[0].toUpperCase()+name.slice(1); }
+function fmtDays(s){ return `${Math.max(0,Math.floor(s))}`; }
+function neighbors(i){ const r=Math.floor(i/N), c=i%N, out=[];
+  if(r>0) out.push(i-N); if(r<N-1) out.push(i+N); if(c>0) out.push(i-1); if(c<N-1) out.push(i+1); return out;}
+function shuffleSolvable(){ const arr=[...Array(N*N).keys()]; let a;
+  do{ a=arr.slice().sort(()=>Math.random()-0.5);} while(!isSolvable(a)||isSolved(a)); return a;}
+function isSolvable(a){ const flat=a.filter(v=>v!==N*N-1); let inv=0;
+  for(let i=0;i<flat.length-1;i++){ for(let j=i+1;j<flat.length;j++){ if(flat[i]>flat[j]) inv++; } }
+  return inv%2===0; }
+function isSolved(a){ return a.every((v,i)=>v===i); }
+
+/* ========== Render ========== */
+function renderBoard(){
+  boardEl.innerHTML='';
+  boardEl.style.gridTemplateColumns=`repeat(${N},1fr)`;
+  boardEl.style.gridTemplateRows=`repeat(${N},1fr)`;
+  tiles.forEach((v, i) => {
+    const d=document.createElement('div');
+    if(v===N*N-1){ d.className='tile empty'; boardEl.appendChild(d); return; }
+    d.className='tile';
+    const tileRow=Math.floor(v/N), tileCol=v%N;
+    const posX = (tileCol/(N-1))*100;
+    const posY = (tileRow/(N-1))*100;
+    d.style.backgroundImage = `url("${imgUrl}")`;
+    d.style.backgroundSize = `${N*100}% ${N*100}%`;
+    d.style.backgroundPosition = `${posX}% ${posY}%`;
+    d.dataset.idx = i;
+    d.addEventListener('click', e=>{
+      ensureAudio(); // user gesture primes audio
+      onTileClick(e);
+    });
+    boardEl.appendChild(d);
+  });
+}
+
+/* ========== Timers ========== */
+function startTimers(){
+  if(timersRunning) return;
+  timersRunning = true;
+  tickTimer = setInterval(()=>{
+    if(paused) return;
+    curLeft -= 1; majLeft -= 1;
+    if(curLeft < 0) curLeft = 0;
+    if(majLeft < 0) majLeft = 0;
+    curLeftEl.textContent = fmtDays(curLeft);
+    majLeftEl.textContent = fmtDays(majLeft);
+    if(curLeft === 0){ solveStage(false,true); }
+    else if(majLeft === 0){ solveStage(false,true,true); }
+  }, 1000);
+}
+function stopTimers(){ timersRunning=false; if(tickTimer){clearInterval(tickTimer); tickTimer=null;} }
+
+/* ========== Flow ========== */
+function loadStage(which){
+  currentKey = which;
+  imgUrl = PUZZLE_IMAGES[currentKey];
+  setScreenName(currentKey);
+  tiles = shuffleSolvable();
+  emptyIndex = tiles.indexOf(N*N-1);
+  renderBoard();
+}
+function continueToNextStage(){
+  overlay.style.display="none"; paused=false;
+  if(mode==="sequence"){
+    stageIndex++;
+    if(stageIndex >= SEQUENCE.length || majLeft<=0){ endRun(); return; }
+    currentKey = SEQUENCE[stageIndex];
+    stageIdxEl.textContent = String(stageIndex+1);
+  }
+  curLeft = Math.min(PER_STAGE, majLeft);
+  curLeftEl.textContent = fmtDays(curLeft);
+  loadStage(currentKey);
+  if(majLeft<=0){ endRun(); }
+}
+function solveStage(solved, missed, majorZero=false){
+  paused=true; stopTimers();
+  runLog.push({screen:currentKey, solved, deadline_missed:missed, days_left_current:curLeft, days_left_major:majLeft, ts:new Date().toISOString()});
+  const leftTxt=`${curLeft}d left on current • ${majLeft}d left on major`;
+  if(majLeft===0||majorZero){
+    ovTitle.textContent = solved ? "Stage Complete • Major Deadline Reached" : "Major Deadline Reached";
+    ovBody.innerHTML = `<div class="sub">Final status for <b>${currentKey}</b> — ${solved?'<span style="color:var(--good)">Solved</span>':'<span style="color:var(--bad)">Deadline missed</span>'}.<br/>${leftTxt}.</div>`;
+    ovContinue.textContent="See Results"; ovContinue.onclick=endRun;
+  }else if(missed){
+    ovTitle.textContent="Current Deadline Missed";
+    ovBody.innerHTML=`<div class="sub">You ran out of time on <b>${currentKey}</b>. ${leftTxt}.</div>`;
+    ovContinue.textContent="Next Stage"; ovContinue.onclick=()=>{ensureAudio(); continueToNextStage();};
+  }else{
+    ovTitle.textContent="Stage Complete";
+    ovBody.innerHTML=`<div class="sub">Solved <b>${currentKey}</b> with ${leftTxt}.</div>`;
+    ovContinue.textContent="Next Stage"; ovContinue.onclick=()=>{ensureAudio(); continueToNextStage();};
+  }
+  overlay.style.display="flex";
+}
+function endRun(){
+  paused=true; stopTimers();
+  const solvedCount=runLog.filter(r=>r.solved).length;
+  const missedCount=runLog.filter(r=>r.deadline_missed).length;
+  ovTitle.textContent="Run Complete";
+  ovBody.innerHTML = `<div class="sub">Solved: <b>${solvedCount}</b> • Missed: <b>${missedCount}</b><br/>Major Deadline remaining: <b>${majLeft}d</b></div>`;
+  ovContinue.textContent="Start Again"; ovContinue.onclick=()=>{ensureAudio(); startAgain();};
+  overlay.style.display="flex";
+}
+
+/* ========== Controls ========== */
+function exportRun(){
+  const payload={
+    game:"Dev L0 – Frontend MVP (Sliding Puzzle • Deadlines • Difficulty)",
+    grid:`${N}x${N}`,
+    difficulty,
+    per_stage_seconds: PER_STAGE,
+    major_seconds: MAJOR,
+    sequence: SEQUENCE.slice(),
+    run: runLog,
+    major_deadline_start: MAJOR,
+    major_deadline_end: majLeft,
+    timestamp: new Date().toISOString()
+  };
+  const text=JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(text).then(()=>toast("Run exported to clipboard ✅")).catch(()=>{console.log(text);toast("Copy failed. Check console.");});
+}
+function toast(msg){
+  const t=document.createElement('div');
+  t.style.position='fixed'; t.style.left='50%'; t.style.bottom='18px';
+  t.style.transform='translateX(-50%)'; t.style.background='#101722';
+  t.style.border='1px solid #263448'; t.style.borderRadius='10px';
+  t.style.padding='.55rem .75rem'; t.style.zIndex='99'; t.style.color='var(--ink)';
+  t.style.boxShadow='0 10px 24px rgba(0,0,0,.35)';
+  t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),1500);
+}
+
+document.getElementById('ovCancel').addEventListener('click', ()=>{ overlay.style.display='none'; });
+document.getElementById('exportBtn').addEventListener('click', ()=>{ ensureAudio(); exportRun(); });
+toggleSfxBtn.addEventListener('click', ()=>{
+  ensureAudio();
+  sfxEnabled=!sfxEnabled; toggleSfxBtn.textContent=`SFX: ${sfxEnabled?'On':'Off'}`;
+  if(sfxEnabled) bleep(900,0.05,'square',0.03);
+});
+picker.addEventListener('change', ()=>{
+  ensureAudio();
+  const val=picker.value; runLog=[];
+  if(val==='sequence'){ mode='sequence'; stageIndex=0; currentKey=SEQUENCE[stageIndex]; stageIdxEl.textContent='1'; }
+  else { mode='single'; currentKey=val; stageIndex=0; stageIdxEl.textContent='—'; }
+  majLeft = MAJOR; curLeft = Math.min(PER_STAGE, majLeft);
+  curLeftEl.textContent = fmtDays(curLeft); majLeftEl.textContent = fmtDays(majLeft);
+  setScreenName(currentKey); loadStage(currentKey); paused=false; stopTimers();
+});
+resetBtn.addEventListener('click', ()=>{
+  ensureAudio();
+  runLog=[]; majLeft=MAJOR; curLeft=Math.min(PER_STAGE,majLeft);
+  curLeftEl.textContent=fmtDays(curLeft); majLeftEl.textContent=fmtDays(majLeft);
+  stageIndex=(mode==='sequence')?0:0; currentKey=(mode==='sequence')?SEQUENCE[stageIndex]:currentKey;
+  stageIdxEl.textContent=(mode==='sequence')?'1':'—'; setScreenName(currentKey);
+  loadStage(currentKey); paused=false; stopTimers();
+});
+function startAgain(){
+  picker.value='sequence'; mode='sequence'; runLog=[]; stageIndex=0; currentKey=SEQUENCE[stageIndex];
+  setScreenName(currentKey); majLeft=MAJOR; curLeft=Math.min(PER_STAGE,majLeft);
+  curLeftEl.textContent=fmtDays(curLeft); majLeftEl.textContent=fmtDays(majLeft);
+  stageIdxEl.textContent='1'; overlay.style.display='none'; paused=false; stopTimers(); loadStage(currentKey);
+}
+againBtn.addEventListener('click', ()=>{ ensureAudio(); startAgain(); });
+
+/* ========== Difficulty overlay wiring ========== */
+diffOverlay.querySelectorAll('[data-diff]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    difficulty = btn.dataset.diff;
+    const mult = DIFF_MULT[difficulty] || 1.0;
+    PER_STAGE = Math.round(BASE_PER_STAGE * mult);
+    MAJOR = Math.round(BASE_MAJOR * mult);
+    ensureAudio(); // gesture unlocks SFX
+    diffOverlay.style.display='none';
+    startAgain();
+  });
+});
+
+/* ========== Tile click handler (after ensureAudio call) ========== */
+function onTileClick(e){
+  if(paused) return;
+  const idx = parseInt(e.currentTarget.dataset.idx,10);
+  if(neighbors(emptyIndex).includes(idx)){
+    [tiles[idx], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[idx]];
+    emptyIndex = idx;
+    bleep(700,0.035,'triangle',0.03);
+    renderBoard();
+    if(!timersRunning) startTimers();
+    if(isSolved(tiles)){ solveStage(true,false); }
+  } else {
+    bleep(240,0.04,'sawtooth',0.02);
+  }
+}
+
+/* ========== Boot ========== */
+(function boot(){
+  // show difficulty first (also gives us a guaranteed gesture to enable audio)
+  diffOverlay.style.display='flex';
+})();
+</script>
+</body>
+</html>
