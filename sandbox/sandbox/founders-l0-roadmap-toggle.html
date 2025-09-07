@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CGT – Founders L0: Roadmap Control (Toggle Reflex • 5 chances)</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --ink:#eaf2ff; --muted:#9fb3cc;
+    --accent:#5ee1a2; --danger:#ff6b6b; --ring:#6be9cd;
+    --btn:#1b2432; --bar:#1b2634; --border:#1f2a37;
+    --green:#0e7f55; --green2:#17a46e; --red:#95333a; --red2:#c54650;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+       font:16px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+  header{position:sticky;top:0;z-index:5;padding:.75rem 1rem;background:rgba(11,15,20,.82);
+         -webkit-backdrop-filter:saturate(140%) blur(10px);backdrop-filter:saturate(140%) blur(10px);
+         border-bottom:1px solid #17202b;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+  .brand{font-weight:700}
+  .chip{font-size:.82rem;color:var(--muted)}
+  .hud{margin-left:auto;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .pill{padding:.25rem .6rem;border:1px solid #243246;border-radius:999px;color:var(--muted);font-size:.82rem}
+  .skulls{font-weight:700}
+  .bar{width:200px;max-width:50vw;height:8px;background:var(--bar);border:1px solid #223042;border-radius:999px;overflow:hidden}
+  .fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#6be9cd);transition:width .05s linear}
+  main{max-width:820px;margin:0 auto;padding:1rem .75rem 5rem;display:grid;gap:1rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1.1rem;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+  .row{display:grid;gap:.6rem}
+  .feature{background:#0f1621;border:1px dashed #2a3a4e;border-radius:14px;padding:.75rem .9rem}
+  .tag{font-size:.78rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .name{font-weight:800;letter-spacing:.02em}
+  .name.big{font-size:1.25rem}
+  .divider{text-align:center;color:#a7bdd8;letter-spacing:.3em;font-weight:800;opacity:.9;user-select:none;padding:.4rem 0 .1rem;position:relative}
+  .divider::before,.divider::after{content:"";position:absolute;top:50%;width:32%;height:1px;background:#263447}
+  .divider::before{left:0}.divider::after{right:0}
+  .toggleWrap{display:grid;gap:.6rem;align-items:center;justify-items:center}
+  .toggleBtn{appearance:none;border:2px solid #2a3a4e;border-radius:16px;cursor:pointer;padding:1.1rem;width:min(560px,96%);font-weight:900;font-size:1.15rem;box-shadow:0 12px 24px rgba(0,0,0,.28);color:#fff;background:var(--btn);transition:transform .06s ease,background .2s ease,border-color .2s ease,filter .1s linear}
+  .toggleBtn:active{transform:translateY(1px)}
+  .state-before{background:linear-gradient(180deg,var(--green2),var(--green));border-color:#1e6b4b}
+  .state-after{background:linear-gradient(180deg,var(--red2),var(--red));border-color:#7a2c33}
+  .pulse{animation:pulse .35s ease}
+  @keyframes pulse{0%{filter:brightness(1.0)}50%{filter:brightness(1.15)}100%{filter:brightness(1.0)}}
+  .skull{font-size:2.2rem;line-height:1}
+  .end h2{margin:.2rem 0 .35rem}
+  .end .grades{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+  .gradepill{padding:.35rem .6rem;border:1px dashed #32465e;border-radius:999px;color:var(--muted);font-size:.85rem}
+  .fab{position:fixed;right:16px;bottom:16px;z-index:10;background:linear-gradient(180deg,#1c2735,#131b26);color:var(--ink);border:1px solid #243246;border-radius:999px;padding:.9rem 1.05rem;font-weight:800;box-shadow:0 12px 24px rgba(0,0,0,.35);cursor:pointer}
+  .fab:focus{outline:2px solid var(--ring);outline-offset:3px}
+  .small{font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Founders L0 – Roadmap Control</div>
+  <span class="chip">Prototype v0.4 • Single-toggle • 5 flips/round</span>
+  <div class="hud">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Streak: <span id="streak">0</span></div>
+    <div class="pill skulls">💀 <span id="fails">0</span></div>
+    <div class="pill">Chances: <span id="chances">5</span>/5</div>
+    <div class="bar"><div class="fill" id="timerFill"></div></div>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="row">
+      <div class="feature">
+        <div class="tag">Anchor (already placed)</div>
+        <div class="name" id="anchorName">—</div>
+      </div>
+
+      <div class="divider">— COMES —</div>
+
+      <div class="feature">
+        <div class="tag">Incoming (decide quickly)</div>
+        <div class="name big" id="incomingName">—</div>
+      </div>
+    </div>
+
+    <div class="toggleWrap" style="margin-top:.6rem">
+      <button id="toggleBtn" class="toggleBtn">BEFORE</button>
+      <div class="small" style="color:var(--muted)">The button flips automatically. You have up to 5 flips to lock a choice before 💀.</div>
+    </div>
+  </section>
+
+  <section class="card end" id="endCard" style="display:none">
+    <div class="kicker" style="color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-size:.78rem">Outcome</div>
+    <h2 id="titleOutcome">—</h2>
+    <p class="small" id="descOutcome">—</p>
+    <div class="grades">
+      <span class="gradepill" id="starsPill">⭐️ —</span>
+      <span class="gradepill">Correct: <span id="correctOut">0</span></span>
+      <span class="gradepill">Errors: <span id="failsOut">0</span> 💀</span>
+      <span class="gradepill">Total: <span id="totalOut">0</span></span>
+    </div>
+    <div class="grades" style="margin-top:.6rem">
+      <button class="toggleBtn" id="exportBtn" style="width:auto;padding:.6rem .8rem;font-size:.95rem">📤 Export run (copy JSON)</button>
+      <button class="toggleBtn" id="playAgainBtn" style="width:auto;padding:.6rem .8rem;font-size:.95rem">↻ Start Again</button>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="restartFab">↻ Start Again</button>
+
+<script>
+/* ---------------------------------------------------------------------------
+   CGT – Founders L0: Roadmap Control (Single Toggle • 5 flips per round)
+   - Button auto-flips BETWEEN BEFORE (green) and AFTER (red).
+   - Each round allows up to 5 flips; no click by then = timeout 💀.
+---------------------------------------------------------------------------- */
+
+const FEATURES = [
+  { id: "mock-loop",          name: "Mock Game Loop Stable" },
+  { id: "explorer-read",      name: "Explorer (Read-Only)" },
+  { id: "leaderboard-claims", name: "Leaderboard Claims Live" },
+  { id: "publishing-access",  name: "GQT Publishing Access (Mock)" },
+  { id: "marketing-activation", name: "Marketing Activation (Light)" },
+  { id: "third-party-beta",   name: "3rd-Party Publishing (Beta)" },
+  { id: "dao-readiness",      name: "DAO Readiness Logging" },
+  { id: "dao-activation",     name: "DAO Activation" },
+];
+// canonical order:
+const ORDER = FEATURES.map(f=>f.id);
+
+let pool = [];
+let anchor=null, incoming=null;
+let score=0, streak=0, fails=0, correct=0, totalAsked=0;
+
+let flipIntervalMs=900, minFlipMs=400, flipRamp=50;
+let roundTimer=null, barTimer=null, sliceElapsed=0;
+let currentState="before";
+let flipsThisRound=0, maxFlipsPerRound=5;
+
+const anchorName = document.getElementById("anchorName");
+const incomingName = document.getElementById("incomingName");
+const scoreEl = document.getElementById("score");
+const streakEl = document.getElementById("streak");
+const failsEl = document.getElementById("fails");
+const chancesEl = document.getElementById("chances");
+const timerFill = document.getElementById("timerFill");
+const toggleBtn = document.getElementById("toggleBtn");
+
+const endCard = document.getElementById("endCard");
+const titleOutcome = document.getElementById("titleOutcome");
+const descOutcome = document.getElementById("descOutcome");
+const starsPill = document.getElementById("starsPill");
+const correctOut = document.getElementById("correctOut");
+const failsOut = document.getElementById("failsOut");
+const totalOut = document.getElementById("totalOut");
+const exportBtn = document.getElementById("exportBtn");
+const playAgainBtn = document.getElementById("playAgainBtn");
+const restartFab = document.getElementById("restartFab");
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a;}
+function idx(id){return ORDER.indexOf(id);}
+
+function setState(state){
+  currentState=state;
+  toggleBtn.textContent=state.toUpperCase();
+  toggleBtn.classList.remove("state-before","state-after","pulse");
+  toggleBtn.classList.add(state==="before"?"state-before":"state-after");
+  requestAnimationFrame(()=>toggleBtn.classList.add("pulse"));
+}
+
+function startFlipLoop(){
+  stopFlipLoop();
+  sliceElapsed=0;
+  flipsThisRound=0;
+  chancesEl.textContent = (maxFlipsPerRound - flipsThisRound).toString();
+  setState(Math.random()<0.5?"before":"after");
+
+  roundTimer=setInterval(()=>{
+    flipsThisRound++;
+    if(flipsThisRound>=maxFlipsPerRound){
+      // timeout – no answer given
+      timeoutFail();
+      return;
+    }
+    setState(currentState==="before"?"after":"before");
+    sliceElapsed=0;
+    chancesEl.textContent = (maxFlipsPerRound - flipsThisRound).toString();
+  }, flipIntervalMs);
+
+  barTimer=setInterval(()=>{
+    sliceElapsed+=50;
+    const pct=Math.max(0,Math.min(100,(sliceElapsed/flipIntervalMs)*100));
+    timerFill.style.width=pct+"%";
+  },50);
+}
+
+function stopFlipLoop(){
+  if(roundTimer){clearInterval(roundTimer);roundTimer=null;}
+  if(barTimer){clearInterval(barTimer);barTimer=null;}
+  timerFill.style.width="0%";
+}
+
+function nextRound(){
+  if(pool.length===0){ stopFlipLoop(); showOutcome(); return; }
+  if(anchor===null){ anchor=pool.shift(); }
+  incoming=pool.shift();
+  anchorName.textContent=FEATURES.find(f=>f.id===anchor).name;
+  incomingName.textContent=FEATURES.find(f=>f.id===incoming).name;
+  startFlipLoop();
+}
+
+function handleClick(){
+  // lock current state and grade
+  totalAsked++;
+  const correctRel = idx(incoming) < idx(anchor) ? "before" : "after";
+  const ok = (currentState===correctRel);
+
+  stopFlipLoop();
+
+  if(ok){
+    correct++; streak++; score++;
+    flipIntervalMs=Math.max(minFlipMs,flipIntervalMs-flipRamp);
+    anchor=incoming;
+  }else{
+    fails++; streak=0; score=Math.max(0,score-1);
+    flipIntervalMs=Math.min(1400,flipIntervalMs+100);
+    anchor=incoming;
+    flashSkull();
+  }
+  updateHud();
+  setTimeout(nextRound,220);
+}
+
+function timeoutFail(){
+  // called when 5 flips elapsed without click
+  totalAsked++; fails++; streak=0; score=Math.max(0,score-1);
+  stopFlipLoop(); flashSkull();
+  anchor=incoming; // still advance
+  updateHud();
+  setTimeout(nextRound,220);
+}
+
+function updateHud(){
+  scoreEl.textContent=score;
+  streakEl.textContent=streak;
+  failsEl.textContent=fails;
+}
+
+function flashSkull(){
+  const skull=document.createElement("div");
+  skull.textContent="💀"; skull.className="skull";
+  skull.style.position="fixed"; skull.style.left="50%"; skull.style.top="56%";
+  skull.style.transform="translate(-50%,-50%) scale(.9)"; skull.style.opacity="0";
+  skull.style.transition="opacity .15s ease, transform .22s ease";
+  document.body.appendChild(skull);
+  requestAnimationFrame(()=>{skull.style.opacity="1"; skull.style.transform="translate(-50%,-50%) scale(1.1)";});
+  setTimeout(()=>{skull.style.opacity="0"; skull.style.transform="translate(-50%,-50%) scale(.9)"; setTimeout(()=>skull.remove(),150);},360);
+}
+
+function showOutcome(){
+  const total=totalAsked, c=correct;
+  let title,desc,stars;
+  if(c<=Math.floor(total*0.45)){title="⭐️ Roadmap Rookie";stars="⭐️ 1/3";desc="Sequencing unstable. Rehearse dependencies and readiness signals.";}
+  else if(c<=Math.floor(total*0.8)){title="⭐️⭐️ Sequencing Custodian";stars="⭐️⭐️ 2/3";desc="Solid order and pacing. Keep avoiding premature activations.";}
+  else {title="⭐️⭐️⭐️ Protocol Maestro";stars="⭐️⭐️⭐️ 3/3";desc="Excellent anticipation of dependencies; staged releases preserve trust.";}
+  titleOutcome.textContent=title; descOutcome.textContent=desc; starsPill.textContent=stars;
+  correctOut.textContent=c; failsOut.textContent=fails; totalOut.textContent=total;
+  endCard.style.display="block";
+}
+
+function restart(){
+  pool=shuffle(ORDER.slice());
+  anchor=null; incoming=null;
+  score=0; streak=0; fails=0; correct=0; totalAsked=0;
+  flipIntervalMs=900;
+  endCard.style.display="none";
+  updateHud();
+  nextRound();
+}
+
+function exportRun(){
+  const payload={
+    game:"CGT Founders L0 – Roadmap Control (Toggle Reflex • 5 chances)",
+    metrics:{score,correct,fails,totalAsked,finalFlipMs:flipIntervalMs,maxFlipsPerRound},
+    timestamp:new Date().toISOString(),
+    featuresOrderCanonical:ORDER
+  };
+  const text=JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(text).then(()=>toast("Run exported to clipboard ✅")).catch(()=>{toast("Copy failed. Check console.");console.log(text);});
+}
+function toast(msg){
+  const t=document.createElement("div");
+  t.textContent=msg;
+  t.style.position="fixed";t.style.left="50%";t.style.bottom="22px";t.style.transform="translateX(-50%)";
+  t.style.background="#101722";t.style.border="1px solid #263448";t.style.padding=".6rem .8rem";
+  t.style.borderRadius="10px";t.style.color="var(--ink)";t.style.boxShadow="0 10px 24px rgba(0,0,0,.35)";t.style.zIndex="9999";t.style.fontSize=".9rem";
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1600);
+}
+
+// events
+toggleBtn.addEventListener("click", handleClick);
+restartFab.addEventListener("click", restart);
+playAgainBtn?.addEventListener("click", restart);
+exportBtn?.addEventListener("click", exportRun);
+
+// boot
+restart();
+</script>
+</body>
+</html>
