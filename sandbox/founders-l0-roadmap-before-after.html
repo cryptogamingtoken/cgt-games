@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CGT – Founders L0: Roadmap Control (Before / After)</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --ink:#eaf2ff; --muted:#9fb3cc;
+    --accent:#5ee1a2; --warn:#ffb84d; --danger:#ff6b6b; --ring:#6be9cd;
+    --btn:#1a2331; --btn-hover:#223044; --bar:#1b2634;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+       font:16px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+  header{position:sticky;top:0;z-index:5;background:rgba(11,15,20,.8);
+         -webkit-backdrop-filter:saturate(140%) blur(10px);backdrop-filter:saturate(140%) blur(10px);
+         border-bottom:1px solid #17202b;padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+  .brand{font-weight:700}
+  .chip{font-size:.82rem;color:var(--muted)}
+  .hud{margin-left:auto;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .pill{padding:.25rem .6rem;border:1px solid #243246;border-radius:999px;color:var(--muted);font-size:.82rem}
+  .skulls{font-weight:700}
+  .bar{width:180px;max-width:44vw;height:8px;background:var(--bar);border:1px solid #223042;border-radius:999px;overflow:hidden}
+  .fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#6be9cd);transition:width .1s linear}
+  main{max-width:760px;margin:0 auto;padding:1rem .75rem 5rem;display:grid;gap:1rem}
+  .card{background:var(--panel);border:1px solid #1f2a37;border-radius:14px;padding:1rem;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+  .kicker{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:1.1rem;margin:.25rem 0 .5rem}
+  .stack{display:grid;gap:.75rem}
+  .row{display:grid;gap:.5rem}
+  .feature{padding:.6rem .75rem;border:1px dashed #2a3a4e;border-radius:12px;background:#0f1621}
+  .feature .tag{font-size:.78rem;color:var(--muted)}
+  .feature .name{font-weight:700}
+  .center{display:flex;gap:.6rem;justify-content:space-between}
+  .btn{appearance:none;border:1px solid #2a3a4e;background:var(--btn);color:var(--ink);
+       padding:.9rem 1rem;border-radius:12px;cursor:pointer;font-weight:800;flex:1;
+       transition:transform .05s ease, background .2s ease, border-color .2s ease}
+  .btn:hover{background:var(--btn-hover);border-color:#2f425a}
+  .btn:active{transform:translateY(1px)}
+  .big{font-size:1.05rem;letter-spacing:.02em}
+  .disabled{opacity:.6;pointer-events:none}
+  .flash{animation:flash .35s ease}
+  @keyframes flash{0%{box-shadow:0 0 0 0 rgba(111,233,205,.0)}60%{box-shadow:0 0 0 6px rgba(111,233,205,.2)}100%{box-shadow:0 0 0 0 rgba(111,233,205,.0)}}
+  .skull{font-size:2rem;line-height:1}
+  .end h2{margin:.25rem 0 .35rem}
+  .end .grades{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+  .gradepill{padding:.35rem .6rem;border:1px dashed #32465e;border-radius:999px;color:var(--muted);font-size:.85rem}
+  .fab{position:fixed;right:16px;bottom:16px;z-index:10;background:linear-gradient(180deg,#1c2735,#131b26);
+       color:var(--ink);border:1px solid #243246;border-radius:999px;padding:.9rem 1.05rem;font-weight:800;box-shadow:0 12px 24px rgba(0,0,0,.35);cursor:pointer}
+  .fab:focus{outline:2px solid var(--ring);outline-offset:3px}
+  .small{font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Founders L0 – Roadmap Control</div>
+  <span class="chip">Prototype v0.2 • Before/After reflex</span>
+  <div class="hud">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Streak: <span id="streak">0</span></div>
+    <div class="pill skulls">💀 <span id="fails">0</span></div>
+    <div class="bar"><div class="fill" id="timerFill"></div></div>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="kicker">How to play</div>
+    <h1>Place the incoming milestone **before** or **after** the last one shown.</h1>
+    <div class="stack">
+      <div class="row">
+        <div class="feature">
+          <div class="tag">Anchor (already placed)</div>
+          <div class="name" id="anchorName">—</div>
+        </div>
+        <div class="feature">
+          <div class="tag">Incoming (decide quickly)</div>
+          <div class="name" id="incomingName">—</div>
+        </div>
+      </div>
+      <div class="center">
+        <button id="beforeBtn" class="btn big">◀︎ BEFORE</button>
+        <button id="afterBtn" class="btn big">AFTER ▶︎</button>
+      </div>
+      <div class="row small" id="hint" style="color:var(--muted)">
+        Wrong choice or time-out shows a 💀. Speed ramps up as your streak grows.
+      </div>
+    </div>
+  </section>
+
+  <section class="card end" id="endCard" style="display:none">
+    <div class="kicker">Outcome</div>
+    <h2 id="titleOutcome">—</h2>
+    <p class="small" id="descOutcome">—</p>
+    <div class="grades">
+      <span class="gradepill" id="starsPill">⭐️ —</span>
+      <span class="gradepill">Correct: <span id="correctOut">0</span></span>
+      <span class="gradepill">Errors: <span id="failsOut">0</span> 💀</span>
+      <span class="gradepill">Total: <span id="totalOut">0</span></span>
+    </div>
+    <div class="grades" style="margin-top:.6rem">
+      <button class="btn" id="exportBtn">📤 Export run (copy JSON)</button>
+      <button class="btn" id="playAgainBtn">↻ Start Again</button>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="restartFab">↻ Start Again</button>
+
+<script>
+/* ----------------------------------------------------------------------------
+   CGT – Founders L0: Roadmap Control (Before / After Reflex Prototype)
+   - Minimal UI to validate the mechanic & difficulty ramp.
+   - Canonical roadmap order is encoded; player judges incoming vs last shown.
+   - Skull 💀 on wrong/timeout; stars map to Rookie/Custodian/Maestro.
+----------------------------------------------------------------------------- */
+
+const FEATURES = [
+  { id: "mock-loop",          name: "Mock Game Loop Stable" },
+  { id: "explorer-read",      name: "Explorer (Read-Only)" },
+  { id: "leaderboard-claims", name: "Leaderboard Claims Live" },
+  { id: "publishing-access",  name: "GQT Publishing Access (Mock)" },
+  { id: "marketing-activation", name: "Marketing Activation (Light)" },
+  { id: "third-party-beta",   name: "3rd-Party Publishing (Beta)" },
+  { id: "dao-readiness",      name: "DAO Readiness Logging" },
+  { id: "dao-activation",     name: "DAO Activation" },
+];
+// Canonical roadmap order (by index)
+const ORDER = FEATURES.map(f=>f.id); // already ordered as written
+
+// State
+let pool = [];           // shuffled feature ids
+let anchor = null;       // id of last shown
+let incoming = null;     // id of next to place
+let score = 0;
+let streak = 0;
+let fails = 0;
+let correct = 0;
+let totalAsked = 0;
+let timer = null;
+let timeLeft = 0;
+let timeMax = 3000;      // ms; shrinks with streak (difficulty ramp)
+let minTime = 1000;      // fastest window
+let rampStep = 200;      // reduce per correct answer
+let running = false;
+
+// DOM
+const anchorName = document.getElementById("anchorName");
+const incomingName = document.getElementById("incomingName");
+const beforeBtn = document.getElementById("beforeBtn");
+const afterBtn = document.getElementById("afterBtn");
+const scoreEl = document.getElementById("score");
+const streakEl = document.getElementById("streak");
+const failsEl = document.getElementById("fails");
+const timerFill = document.getElementById("timerFill");
+const endCard = document.getElementById("endCard");
+const titleOutcome = document.getElementById("titleOutcome");
+const descOutcome = document.getElementById("descOutcome");
+const starsPill = document.getElementById("starsPill");
+const correctOut = document.getElementById("correctOut");
+const failsOut = document.getElementById("failsOut");
+const totalOut = document.getElementById("totalOut");
+const exportBtn = document.getElementById("exportBtn");
+const playAgainBtn = document.getElementById("playAgainBtn");
+const restartFab = document.getElementById("restartFab");
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function idx(id){ return ORDER.indexOf(id); }
+
+function nextRound(){
+  if(pool.length === 0){
+    // end
+    stopTimer();
+    showOutcome();
+    return;
+  }
+  if(anchor === null){
+    // First item becomes anchor; pull another for incoming
+    anchor = pool.shift();
+  }
+  incoming = pool.shift();
+  anchorName.textContent = FEATURES.find(f=>f.id===anchor).name;
+  incomingName.textContent = FEATURES.find(f=>f.id===incoming).name;
+
+  // small visual flash on buttons to hint action
+  beforeBtn.classList.remove("flash"); afterBtn.classList.remove("flash");
+  requestAnimationFrame(()=>{ beforeBtn.classList.add("flash"); afterBtn.classList.add("flash"); });
+
+  // start timer for this round
+  startTimer();
+  running = true;
+}
+
+function startTimer(){
+  stopTimer();
+  timeLeft = timeMax;
+  updateTimerBar();
+  timer = setInterval(()=>{
+    timeLeft -= 100;
+    if(timeLeft <= 0){
+      stopTimer();
+      handleAnswer(null); // timeout counts as wrong
+    } else {
+      updateTimerBar();
+    }
+  },100);
+}
+function stopTimer(){
+  if(timer){ clearInterval(timer); timer=null; }
+}
+function updateTimerBar(){
+  const pct = Math.max(0, Math.min(100, (timeLeft/timeMax)*100));
+  timerFill.style.width = pct + "%";
+}
+
+function handleAnswer(choice){ // "before" | "after" | null (timeout)
+  if(!running) return;
+  running = false;
+  stopTimer();
+  totalAsked++;
+
+  const correctRel = idx(incoming) < idx(anchor) ? "before" : "after";
+  const ok = (choice && choice === correctRel);
+
+  if(ok){
+    correct++;
+    streak++;
+    score += Math.max(1, 3 - Math.floor((timeMax - timeLeft)/700)); // tiny bonus for speed
+    timeMax = Math.max(minTime, timeMax - rampStep);
+    // rotate: incoming becomes new anchor
+    anchor = incoming;
+  } else {
+    fails++;
+    streak = 0;
+    score = Math.max(0, score - 1);
+    timeMax = Math.min(3200, timeMax + 150); // forgive a bit: slow down after mistake
+    // wrong: keep current anchor, but still move timeline forward
+    anchor = incoming; // advance anyway to keep flow
+    flashSkull();
+  }
+
+  // update HUD
+  scoreEl.textContent = score;
+  streakEl.textContent = streak;
+  failsEl.textContent = fails;
+
+  // Continue
+  setTimeout(nextRound, 250);
+}
+
+function flashSkull(){
+  const skull = document.createElement("div");
+  skull.textContent = "💀";
+  skull.className = "skull";
+  skull.style.position="fixed";
+  skull.style.left="50%";
+  skull.style.top="55%";
+  skull.style.transform="translate(-50%,-50%)";
+  skull.style.opacity="0.0";
+  skull.style.transition="opacity .15s ease, transform .25s ease";
+  document.body.appendChild(skull);
+  requestAnimationFrame(()=>{
+    skull.style.opacity="1";
+    skull.style.transform="translate(-50%,-50%) scale(1.1)";
+  });
+  setTimeout(()=>{
+    skull.style.opacity="0";
+    skull.style.transform="translate(-50%,-50%) scale(.9)";
+    setTimeout(()=>skull.remove(),150);
+  },350);
+}
+
+function showOutcome(){
+  // Grade to titles
+  // thresholds tuned for 7 decisions (first item anchors, so N-1 rounds)
+  const total = totalAsked;
+  const c = correct;
+  let title, desc, stars;
+  if(c <= Math.floor(total*0.45)){
+    title = "⭐️ Roadmap Rookie";
+    stars = "⭐️ 1/3";
+    desc = "Understands the idea of staging, but sequencing is unstable. Review dependencies and readiness signals.";
+  } else if(c <= Math.floor(total*0.8)){
+    title = "⭐️⭐️ Sequencing Custodian";
+    stars = "⭐️⭐️ 2/3";
+    desc = "Good grasp of order and pacing. Avoid premature activations; keep refining readiness checks.";
+  } else {
+    title = "⭐️⭐️⭐️ Protocol Maestro";
+    stars = "⭐️⭐️⭐️ 3/3";
+    desc = "Anticipates dependencies and times releases coherently. Narrative authority preserved.";
+  }
+
+  titleOutcome.textContent = title;
+  descOutcome.textContent = desc;
+  starsPill.textContent = stars;
+  correctOut.textContent = c;
+  failsOut.textContent = fails;
+  totalOut.textContent = total;
+
+  document.getElementById("endCard").style.display = "block";
+  beforeBtn.classList.add("disabled");
+  afterBtn.classList.add("disabled");
+}
+
+function restart(){
+  // Reset state
+  pool = shuffle(ORDER.slice()); // get ids
+  anchor = null; incoming = null;
+  score = 0; streak = 0; fails = 0; correct = 0; totalAsked = 0;
+  timeMax = 3000; running=false;
+  scoreEl.textContent = "0"; streakEl.textContent = "0"; failsEl.textContent = "0";
+  document.getElementById("endCard").style.display = "none";
+  beforeBtn.classList.remove("disabled");
+  afterBtn.classList.remove("disabled");
+  nextRound();
+}
+
+function exportRun(){
+  const payload = {
+    game: "CGT Founders L0 – Roadmap Control (Before/After)",
+    metrics: { score, correct, fails, totalAsked, maxStreakHint: "not tracked", finalWindowMs: timeMax },
+    timestamp: new Date().toISOString(),
+    featuresOrderCanonical: ORDER,
+  };
+  const text = JSON.stringify(payload, null, 2);
+  navigator.clipboard.writeText(text).then(()=>{
+    quickToast("Run exported to clipboard ✅");
+  }).catch(()=>{
+    quickToast("Copy failed. Check console.");
+    console.log(text);
+  });
+}
+
+function quickToast(msg){
+  const t = document.createElement("div");
+  t.textContent = msg;
+  t.style.position="fixed"; t.style.left="50%"; t.style.bottom="22px"; t.style.transform="translateX(-50%)";
+  t.style.background="#101722"; t.style.border="1px solid #263448"; t.style.padding=".6rem .8rem";
+  t.style.borderRadius="10px"; t.style.color="var(--ink)"; t.style.boxShadow="0 10px 24px rgba(0,0,0,.35)";
+  t.style.zIndex="9999"; t.style.fontSize=".9rem";
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),1600);
+}
+
+// Wire up
+beforeBtn.addEventListener("click", ()=>handleAnswer("before"));
+afterBtn.addEventListener("click",  ()=>handleAnswer("after"));
+restartFab.addEventListener("click", restart);
+playAgainBtn.addEventListener("click", restart);
+exportBtn.addEventListener("click", exportRun);
+
+// Boot
+restart();
+</script>
+</body>
+</html>
