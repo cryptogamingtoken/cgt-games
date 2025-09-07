@@ -362,38 +362,58 @@ function handleClick(){
   if (paused || gameOver) return;
 
   totalAsked++;
-  // smarter dependency-aware relation
-  const correctRel = relationOf(incoming, anchor);
-  const ok = (currentState === correctRel);
   stopFlipLoop();
+
+  // ⚠️ snapshot the current anchor before we mutate it
+  const prevAnchor = anchor;
+  const correctRel = relationOf(incoming, prevAnchor);
+  const ok = (currentState === correctRel);
 
   if (ok){
     correct++; streak++; score++;
     flipIntervalMs = Math.max(minFlipMs, flipIntervalMs - flipRamp);
-    anchor = incoming;
+    anchor = incoming;                    // advance anchor
     updateHud();
     setTimeout(nextRound, 220);
   } else {
     fails++; streak = 0; score = Math.max(0, score - 1);
     flipIntervalMs = Math.min(BASE_FLIP * 4, flipIntervalMs + 100);
     flashSkull();
+
+    // 🔁 show the *correct* state on the button during the hint
+    setState(correctRel);
+
+    // build the hint message using the *previous* anchor
+    const hintMsg = wrongReason(incoming, prevAnchor, currentState);
+
+    // advance anchor for the next round (UI label stays as-is until nextRound)
     anchor = incoming;
     updateHud();
-    showHint(wrongReason(incoming, anchor, currentState), 3200); // pause + explain (except Pro)
+
+    // pause and show guidance (skips in Pro)
+    showHint(hintMsg, 3200);
   }
 }
 
 function timeoutFail(){
   if (paused || gameOver) return;
+
   totalAsked++;
   fails++; streak = 0; score = Math.max(0, score - 1);
   stopFlipLoop();
-  flashSkull();
-  anchor = incoming;
-  updateHud();
-  showHint(wrongReason(incoming, anchor, "timeout"), 3200);
-}
 
+  // ⚠️ same pattern as wrong-press
+  const prevAnchor = anchor;
+  const correctRel = relationOf(incoming, prevAnchor);
+  setState(correctRel);                   // show the right answer while paused
+
+  flashSkull();
+
+  const hintMsg = wrongReason(incoming, prevAnchor, "timeout");
+  anchor = incoming;                      // advance for the next round
+  updateHud();
+  showHint(hintMsg, 3200);                // pauses (except in Pro)
+}
 function updateHud(){
   scoreEl.textContent=score;
   streakEl.textContent=streak;
