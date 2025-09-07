@@ -324,8 +324,9 @@ const ORDER = FEATURES.map(f=>f.id);
 
 // Relationship of A (incoming) relative to B (anchor)
 function relationOf(aId, bId){
-  if (byId[aId].dependsOn?.includes(bId)) return "after";
-  if (byId[bId].dependsOn?.includes(aId)) return "before";
+  const A = byId[aId], B = byId[bId];
+  if (A?.dependsOn?.includes(bId)) return "after";  // A depends on B → AFTER
+  if (B?.dependsOn?.includes(aId)) return "before"; // B depends on A → BEFORE
   return ORDER.indexOf(aId) < ORDER.indexOf(bId) ? "before" : "after";
 }
 
@@ -426,30 +427,39 @@ function stopFlipLoop(){
 }
 
 function nextRound(){
-  if(pool.length===0){ stopFlipLoop(); showOutcome(); return; }
-  if(anchor===null){ anchor=pool.shift(); }
-  incoming=pool.shift();
-  anchorName.textContent=FEATURES.find(f=>f.id===anchor).name;
-  incomingName.textContent=FEATURES.find(f=>f.id===incoming).name;
+  if (pool.length === 0){ stopFlipLoop(); showOutcome(); return; }
+
+  if (anchor === null){
+    anchor = pool.shift();
+    if (pool.length === 0){ stopFlipLoop(); showOutcome(); return; }
+  }
+  incoming = pool.shift();
+
+  // ✅ use label (not name)
+  anchorName.textContent = byId[anchor]?.label || "—";
+  incomingName.textContent = byId[incoming]?.label || "—";
+
   startFlipLoop();
 }
 
 function handleClick(){
   totalAsked++;
-  const correctRel = relationOf(incoming, anchor);   // ✅ smarter dependency-aware relation
+  const correctRel = relationOf(incoming, anchor);
   const ok = (currentState === correctRel);
   stopFlipLoop();
 
   if (ok){
     correct++; streak++; score++;
     flipIntervalMs = Math.max(minFlipMs, flipIntervalMs - flipRamp);
-    anchor = incoming; // advance the anchor on success
+    anchor = incoming;
   } else {
     fails++; streak = 0; score = Math.max(0, score - 1);
     flipIntervalMs = Math.min(BASE_FLIP * 4, flipIntervalMs + 100);
     flashSkull();
-    toast(wrongReason(incoming, anchor, currentState)); // ✅ show reason hint
-    anchor = incoming; // still advance the anchor after an error
+    if (mode !== "pro") {              // ✅ no hints in Pro
+      toast(wrongReason(incoming, anchor, currentState));
+    }
+    anchor = incoming;
   }
 
   updateHud();
@@ -461,8 +471,10 @@ function timeoutFail(){
   fails++; streak = 0; score = Math.max(0, score - 1);
   stopFlipLoop();
   flashSkull();
-  toast(wrongReason(incoming, anchor, "timeout")); // ✅ explain why it should be before/after
-  anchor = incoming; // move the anchor forward even on timeout
+  if (mode !== "pro") {                // ✅ no hints in Pro
+    toast(wrongReason(incoming, anchor, "timeout"));
+  }
+  anchor = incoming;
   updateHud();
   setTimeout(nextRound, 220);
 }
