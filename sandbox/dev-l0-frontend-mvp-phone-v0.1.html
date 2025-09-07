@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT – Core Devs L0: MVP Frontend (Phone Simulator)</title>
+<style>
+:root{
+  --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+  --chrome:#0e1520; --glass:#0f1621; --line:#1e2a3a;
+  --accent:#6be9cd; --ok:#5ee1a2; --warn:#ffd166; --bad:#ff6b6b;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(1200px 700px at 20% -10%, rgba(107,233,205,.08), transparent 60%) , linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);font:16px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+header{position:sticky;top:0;z-index:5;padding:.7rem 1rem;background:rgba(9,12,18,.72);
+       backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #121a25;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+.brand{font-weight:800}
+.chip{color:var(--muted);font-size:.85rem}
+.hud{margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap}
+.pill{border:1px solid #1a2636;border-radius:999px;padding:.25rem .6rem;color:var(--muted);font-size:.85rem}
+
+.wrap{max-width:980px;margin:0 auto;padding:1rem .9rem 3.4rem;display:grid;gap:1rem}
+.grid{display:grid;grid-template-columns:1fr min(360px,84vw);gap:1rem;align-items:start}
+
+.panel{background:linear-gradient(180deg,#111a26,#0f1621);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);padding:1rem}
+.tag{font-size:.78rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.note{color:var(--muted);font-size:.92rem}
+.progress{height:8px;background:#132032;border:1px solid #223249;border-radius:999px;overflow:hidden;margin-top:.4rem}
+.bar{height:100%;width:0;background:linear-gradient(90deg,#4be3c2,#6be9cd);transition:width .2s ease}
+
+/* Phone */
+.phone{aspect-ratio:9/19; background:linear-gradient(180deg,#0c1320,#0a111b);border:1px solid #1c2838;border-radius:28px;box-shadow:0 28px 60px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03);position:relative;overflow:hidden}
+.status{position:absolute;left:0;right:0;top:0;height:22px;background:rgba(255,255,255,.03)}
+.titlebar{position:absolute;left:0;right:0;top:22px;padding:.5rem .8rem;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center}
+.titlebar .t{font-weight:800}
+.screen{position:absolute;inset:22px 0 64px 0;padding:.8rem;overflow:hidden}
+.sheet{position:absolute;left:10px;right:10px;top:12px;background:var(--glass);border:1px solid #203042;border-radius:14px;padding:.8rem;box-shadow:0 16px 36px rgba(0,0,0,.35)}
+.sheet.enter{animation:sheetIn .35s ease}
+@keyframes sheetIn{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+.intent{font-size:1.02rem;margin:.35rem 0 .4rem}
+.hint{color:var(--muted);font-size:.85rem}
+.feedback{min-height:1.2em;margin:.45rem 0 0}
+
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:64px;border-top:1px solid #1e2a3a;background:#0c121c;display:grid;grid-template-columns:repeat(4,1fr)}
+.tab{display:grid;place-items:center;color:#9fb3cc;font-size:.85rem;gap:.15rem;cursor:pointer}
+.tab .icon{font-size:1.25rem}
+.tab.active{color:#eaf2ff;background:linear-gradient(180deg,rgba(107,233,205,.06),transparent)}
+.tab:active{filter:brightness(1.1)}
+.btn{appearance:none;border:1px solid #233247;background:#121a28;color:#eaf2ff;border-radius:10px;padding:.6rem .7rem;font-weight:800;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.centerRow{display:flex;gap:.6rem;flex-wrap:wrap}
+.pill2{padding:.35rem .6rem;border:1px dashed #2c3b50;border-radius:999px;color:var(--muted);font-size:.85rem}
+.end{display:none}
+.end h2{margin:.2rem 0 .35rem}
+.badgeRow{display:flex;gap:.5rem;flex-wrap:wrap}
+
+.small{font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Core Devs L0 – MVP Frontend (Phone Simulator)</div>
+  <span class="chip">Prototype v0.1 • Tap the right UI</span>
+  <div class="hud">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Q: <span id="qIdx">0</span>/<span id="qTotal">0</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel">
+    <div class="tag">How it works</div>
+    <p class="note">You’re driving the **MVP frontend**. An intent card drops into the phone. **Tap the UI surface** that should satisfy it: <b>Wallet</b>, <b>Score</b>, <b>Leaderboard</b>, or <b>Claim</b>. You’ll get a quick nudge, then the next intent arrives.</p>
+    <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="tag">Why this matters</div>
+      <p class="note">The MVP frontend is the **public mirror** of protocol logic. It must render: wallet connect (mock), score submission, leaderboard views, and claim actions — clearly and consistently — so Players, Founders, and even the DAO can see what’s happening.</p>
+      <div class="centerRow" style="margin-top:.6rem">
+        <button class="btn" id="resetBtn">↻ Reset run</button>
+        <button class="btn" id="exportBtn">📤 Export run</button>
+      </div>
+    </section>
+
+    <!-- Phone -->
+    <section class="phone" id="phone">
+      <div class="status"></div>
+      <div class="titlebar"><span class="t">CGT Mock</span><span class="small" id="mini">L0 • UI</span></div>
+      <div class="screen">
+        <article class="sheet enter" id="card">
+          <div class="tag" id="cat">—</div>
+          <div class="intent" id="intent">—</div>
+          <div class="hint" id="hint">—</div>
+          <p class="hint feedback" id="feedback"></p>
+        </article>
+      </div>
+      <nav class="tabbar">
+        <div class="tab" data-ans="wallet">
+          <div class="icon">👛</div><div>Wallet</div>
+        </div>
+        <div class="tab" data-ans="score">
+          <div class="icon">🎮</div><div>Score</div>
+        </div>
+        <div class="tab" data-ans="leaderboard">
+          <div class="icon">🏆</div><div>Leaderboard</div>
+        </div>
+        <div class="tab" data-ans="claim">
+          <div class="icon">🧾</div><div>Claim</div>
+        </div>
+      </nav>
+    </section>
+  </div>
+
+  <!-- End -->
+  <section class="panel end" id="end">
+    <div class="tag">Outcome</div>
+    <h2 id="endTitle">—</h2>
+    <p id="endMsg" class="note">—</p>
+    <div class="badgeRow" style="margin:.4rem 0 .2rem">
+      <span class="pill2" id="stars">⭐️</span>
+      <span class="pill2">Score: <span id="outScore">0</span></span>
+      <span class="pill2">Correct: <span id="outCorrect">0</span></span>
+      <span class="pill2">Errors: <span id="outErrors">0</span></span>
+      <span class="pill2">Total Qs: <span id="outTotal">0</span></span>
+    </div>
+    <div class="centerRow" style="margin-top:.6rem">
+      <button class="btn" id="playAgain">↻ Play again</button>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ===== Intents (player-facing) ===== */
+const BANK = [
+  // Wallet
+  {id:"w1", cat:"Wallet Connect", ans:"wallet",
+   intent:"Player wants to join the mock ecosystem with a wallet.",
+   hint:"Show a visible connect UI and keep a mock session state."},
+  {id:"w2", cat:"Token Gating (Mock)", ans:"wallet",
+   intent:"Lock gameplay until a mock wallet is connected.",
+   hint:"UI must make gating obvious and reversible."},
+  {id:"w3", cat:"Session Restore", ans:"wallet",
+   intent:"Return later and still see my wallet connected.",
+   hint:"Frontend reflects session; no on-chain calls at L0."},
+
+  // Score
+  {id:"s1", cat:"Score Submission", ans:"score",
+   intent:"I just finished a round — submit my score now.",
+   hint:"Visible button or auto-submit path, tied to current block."},
+  {id:"s2", cat:"Score Feedback", ans:"score",
+   intent:"Show me the result of my submission immediately.",
+   hint:"UI echo, not DB logs — confirm write then nudge to rank."},
+  {id:"s3", cat:"Error Handling", ans:"score",
+   intent:"Prevent duplicate scores if I tap twice.",
+   hint:"UI should guard or display duplicate submission state."},
+
+  // Leaderboard
+  {id:"l1", cat:"Leaderboard View", ans:"leaderboard",
+   intent:"Let me see today’s top players and my current rank.",
+   hint:"Paginated list + my position; reflect block windows."},
+  {id:"l2", cat:"My Rank Spotlight", ans:"leaderboard",
+   intent:"Highlight my row so I don’t have to hunt for it.",
+   hint:"Scroll to self; make it obvious and friendly."},
+  {id:"l3", cat:"History Peek", ans:"leaderboard",
+   intent:"Show recent gameBlocks and their winners.",
+   hint:"Read-only explorer-ish view fits here at L0."},
+
+  // Claim
+  {id:"c1", cat:"Claim Visibility", ans:"claim",
+   intent:"Tell me if I’m eligible to claim a reward.",
+   hint:"Clear ‘Claim’ state with disabled/enabled logic."},
+  {id:"c2", cat:"One-Time Claim", ans:"claim",
+   intent:"Make sure I can’t claim the same reward twice.",
+   hint:"Front-end should reflect ‘claimed’ with a hash/ID."},
+  {id:"c3", cat:"Claim Window", ans:"claim",
+   intent:"Show when claim expires so I don’t miss it.",
+   hint:"Timer/label tied to the current leaderboard block."}
+];
+
+const TAKE = 12;
+
+/* ===== Scoring & tiers ===== */
+const SCOREMAP = { correct: 3, wrong: -2 };
+const END_COPY = {
+  sloppy : { title:"⭐️ Sloppy Developer",
+             msg:"UI surfaces don’t mirror protocol flows yet. Players can’t confidently connect, score, rank, or claim." },
+  average: { title:"⭐️⭐️ Average Developer",
+             msg:"Most core surfaces are there and predictable. Tighten clarity and feedback loops." },
+  core   : { title:"⭐️⭐️⭐️ Core Developer",
+             msg:"Wallet → Score → Leaderboard → Claim feel cohesive and transparent. A trustworthy L0 mirror." }
+};
+
+/* ===== State ===== */
+let deck=[], idx=0, score=0, correct=0, answered=0, locked=false;
+
+/* ===== DOM ===== */
+const bar = document.getElementById("bar");
+const scoreEl = document.getElementById("score");
+const qIdxEl = document.getElementById("qIdx");
+const qTotalEl = document.getElementById("qTotal");
+
+const card = document.getElementById("card");
+const catEl = document.getElementById("cat");
+const intentEl = document.getElementById("intent");
+const hintEl = document.getElementById("hint");
+const fb = document.getElementById("feedback");
+
+const end = document.getElementById("end");
+const endTitle = document.getElementById("endTitle");
+const endMsg = document.getElementById("endMsg");
+const starsEl = document.getElementById("stars");
+const outScore = document.getElementById("outScore");
+const outCorrect = document.getElementById("outCorrect");
+const outErrors = document.getElementById("outErrors");
+const outTotal = document.getElementById("outTotal");
+
+/* ===== Utils ===== */
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a;}
+function sample(a,n){a=shuffle(a);return a.slice(0,Math.min(n,a.length));}
+function setBar(p){bar.style.width=Math.max(0,Math.min(100,p))+"%";}
+
+/* ===== SFX ===== */
+let AC=null;
+function ctx(){ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)(); } if(AC.state==='suspended') AC.resume(); return AC; }
+function beep(ok=true){
+  const c=ctx(), o=c.createOscillator(), g=c.createGain();
+  o.type = ok? "triangle" : "square";
+  o.frequency.value = ok? 920 : 220;
+  g.gain.value = 0.0001; g.connect(c.destination); o.connect(g);
+  const t=c.currentTime;
+  g.gain.exponentialRampToValueAtTime(ok?0.35:0.3, t+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+0.35);
+  o.start(t); o.stop(t+0.36);
+}
+
+/* ===== Flow ===== */
+function boot(){
+  deck = sample(BANK, TAKE);
+  idx=0; score=0; correct=0; answered=0; locked=false;
+  qTotalEl.textContent = deck.length;
+  scoreEl.textContent = score;
+  end.style.display="none";
+  render();
+}
+function render(){
+  const q = deck[idx];
+  qIdxEl.textContent = idx+1;
+  setBar((idx/deck.length)*100);
+  fb.textContent = "";
+  catEl.textContent = q.cat;
+  intentEl.textContent = q.intent;
+  hintEl.textContent = q.hint;
+  card.classList.remove("enter"); void card.offsetWidth; card.classList.add("enter");
+  locked=false;
+}
+
+function answer(choice){
+  if(locked || idx>=deck.length) return;
+  locked=true;
+  const q = deck[idx];
+  let delta = 0;
+  if(choice === q.ans){
+    delta = SCOREMAP.correct; correct++; fb.textContent = "✅ Yep — that’s the right surface."; fb.style.color="var(--ok)"; beep(true);
+  } else {
+    delta = SCOREMAP.wrong; fb.textContent = `✖ Not quite — this belongs on “${q.ans}”.`; fb.style.color = "var(--warn)"; beep(false);
+  }
+  score += delta; answered++; scoreEl.textContent = score;
+  setTimeout(()=>{ idx++; if(idx>=deck.length){ finish(); } else { render(); } }, 2000);
+}
+
+function finish(){
+  setBar(100);
+  const max = Math.max(1, answered) * SCOREMAP.correct;
+  const ratio = score / max;
+  const tier = ratio>=0.75 ? "core" : (ratio>=0.5 ? "average" : "sloppy");
+  const starText = tier==="core" ? "⭐️⭐️⭐️" : (tier==="average" ? "⭐️⭐️" : "⭐️");
+  endTitle.textContent = END_COPY[tier].title;
+  endMsg.textContent   = END_COPY[tier].msg;
+  starsEl.textContent  = starText;
+  outScore.textContent = score;
+  outCorrect.textContent = correct;
+  outErrors.textContent = answered - correct;
+  outTotal.textContent = answered;
+  end.style.display="block";
+}
+
+/* ===== Wire UI ===== */
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click", ()=> answer(t.dataset.ans));
+});
+document.getElementById("resetBtn").addEventListener("click", boot);
+document.getElementById("playAgain").addEventListener("click", boot);
+document.getElementById("exportBtn").addEventListener("click", ()=>{
+  const payload = {
+    game:"Core Devs L0 – MVP Frontend (Phone Simulator)",
+    take: deck.length, score, correct, answered,
+    timestamp:new Date().toISOString(),
+    ids: deck.map(q=>q.id)
+  };
+  const text = JSON.stringify(payload, null, 2);
+  navigator.clipboard.writeText(text).then(()=>alert("Run JSON copied ✅"))
+    .catch(()=>{ console.log(text); alert("Copy failed; JSON logged to console.");});
+});
+
+/* go */
+boot();
+</script>
+</body>
+</html>
