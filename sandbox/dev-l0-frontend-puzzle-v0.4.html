@@ -435,13 +435,62 @@ function onTileClick(e){
   }
 }
 
-/* ========== Boot ========== */
-(function boot(){
-  // show difficulty first (also gives us a guaranteed gesture to enable audio)
-  diffOverlay.style.display='flex';
-  // try to preload music quietly; real play happens after a gesture
-  bgm.volume = 0.35;
-})();
+/* ===== Helpers ===== */
+function showDifficulty() {
+  diffOverlay.style.display = 'flex';
+}
+
+function safeStart() {
+  // If overlay is visible, let the user pick; otherwise start anyway
+  if (diffOverlay.style.display !== 'flex') {
+    startAgain();
+  }
+}
+
+/* ===== Robust boot ===== */
+// 1) Prefer DOMContentLoaded. If something delays it, also listen to window.load.
+// 2) Fallback: if the board is still empty shortly after, force the picker.
+function hardBoot() {
+  try { bgm.volume = 0.35; } catch(e) {}
+  showDifficulty();
+
+  // If nothing has put tiles on the board yet, nudge after 800ms
+  setTimeout(() => {
+    const hasTiles = boardEl.children.length > 0;
+    if (!hasTiles) showDifficulty();
+  }, 800);
+
+  // Safety net: if user closed overlay and still no tiles after 1500ms, start
+  setTimeout(() => {
+    const hasTiles = boardEl.children.length > 0;
+    if (!hasTiles) safeStart();
+  }, 1500);
+}
+
+// Ensure we run after DOM is really there
+document.addEventListener('DOMContentLoaded', hardBoot, { once: true });
+window.addEventListener('load', () => {
+  // Some iOS cases fire load before layout paints—reassert once
+  if (diffOverlay.style.display !== 'flex' && boardEl.children.length === 0) {
+    hardBoot();
+  }
+}, { once: true });
+
+/* ===== Global tap to unlock audio (iOS Safari friendly) ===== */
+let audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  ensureAudio(); // resumes AudioContext
+  // Try to start bgm (it will only play after a gesture; this is that gesture)
+  if (musicEnabled) { bgm.play().catch(() => {}); }
+  document.removeEventListener('pointerdown', unlockAudio);
+  document.removeEventListener('touchstart', unlockAudio);
+  document.removeEventListener('click', unlockAudio);
+}
+document.addEventListener('pointerdown', unlockAudio, { passive: true });
+document.addEventListener('touchstart', unlockAudio, { passive: true });
+document.addEventListener('click', unlockAudio, { passive: true });
 </script>
 </body>
 </html>
