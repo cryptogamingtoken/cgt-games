@@ -154,17 +154,188 @@
 <script>
 /* CGT – Founders L0: Roadmap Control (Toggle • Spotlight • Difficulty) */
 
+/* === L0 Roadmap Pack (CryptoGamingToken.com) ============================== */
 const FEATURES = [
-  { id: "mock-loop",          name: "Mock Game Loop Stable" },
-  { id: "explorer-read",      name: "Explorer (Read-Only)" },
-  { id: "leaderboard-claims", name: "Leaderboard Claims Live" },
-  { id: "publishing-access",  name: "GQT Publishing Access (Mock)" },
-  { id: "marketing-activation", name: "Marketing Activation (Light)" },
-  { id: "third-party-beta",   name: "3rd-Party Publishing (Beta)" },
-  { id: "dao-readiness",      name: "DAO Readiness Logging" },
-  { id: "dao-activation",     name: "DAO Activation" },
+  // — Founders (L0) —
+  {
+    id: "founder-custody",
+    label: "Founder Custodianship",
+    type: "founders", phase: "mock",
+    dependsOn: [],
+    reasonIfAfter: "Founders set the narrative frame before anything else."
+  },
+  {
+    id: "protocol-def-auth",
+    label: "Protocol Definition Authority",
+    type: "founders", phase: "mock",
+    dependsOn: ["founder-custody"],
+    reasonIfBefore: "Define boundaries after custodianship sets direction.",
+    reasonIfAfter: "Canon must exist before others can align to it."
+  },
+  {
+    id: "roadmap-control",
+    label: "Roadmap Control",
+    type: "founders", phase: "mock",
+    dependsOn: ["protocol-def-auth"],
+    reasonIfBefore: "Sequence features after defining what counts as protocol."
+  },
+
+  // — Core Developers (L0) —
+  {
+    id: "dev-mvp-backend",
+    label: "MVP Backend",
+    type: "dev", phase: "mock",
+    dependsOn: ["roadmap-control"],
+    reasonIfAfter: "Backend spine must exist to simulate behavior."
+  },
+  {
+    id: "dev-mvp-frontend",
+    label: "MVP Frontend",
+    type: "dev", phase: "mock",
+    dependsOn: ["dev-mvp-backend"],
+    reasonIfBefore: "Frontend needs a spine to mirror."
+  },
+  {
+    id: "wallet-flow-mock",
+    label: "Wallet Flow (Mock)",
+    type: "dev", phase: "mock",
+    dependsOn: ["dev-mvp-frontend","dev-mvp-backend"],
+    reasonIfBefore: "Identity hooks rely on working UI + routes."
+  },
+  {
+    id: "leaderboard-mock",
+    label: "Leaderboard (Mock)",
+    type: "dev", phase: "mock",
+    dependsOn: ["dev-mvp-backend","dev-mvp-frontend","wallet-flow-mock"],
+    reasonIfBefore: "Rankings depend on sessions + submission paths."
+  },
+  {
+    id: "score-submit",
+    label: "Score Submission Logic",
+    type: "dev", phase: "mock",
+    dependsOn: ["wallet-flow-mock","leaderboard-mock"],
+    reasonIfBefore: "Submission needs identity + a board to land on."
+  },
+  {
+    id: "mock-claim-system",
+    label: "Mock Claim System",
+    type: "dev", phase: "mock",
+    dependsOn: ["leaderboard-mock","score-submit"],
+    reasonIfBefore: "Claims require finalized placements and stored scores."
+  },
+  {
+    id: "explorer-ui",
+    label: "Explorer (Read-Only)",
+    type: "dev", phase: "mock",
+    dependsOn: ["leaderboard-mock","mock-claim-system"],
+    reasonIfBefore: "Explorer visualizes existing ranks/claims."
+  },
+  {
+    id: "schema-drafts-published",
+    label: "Publish Schema Drafts",
+    type: "dev", phase: "mock",
+    dependsOn: ["protocol-def-auth","roadmap-control"],
+    reasonIfBefore: "Schemas reflect canonical definitions and staging."
+  },
+
+  // — Players (L0) —
+  {
+    id: "players-enter-main",
+    label: "Players Enter Main Game",
+    type: "players", phase: "mock",
+    dependsOn: ["dev-mvp-frontend","wallet-flow-mock"],
+    reasonIfBefore: "Entry needs UI + session identity."
+  },
+  {
+    id: "players-receive-scores",
+    label: "Players Receive Scores",
+    type: "players", phase: "mock",
+    dependsOn: ["players-enter-main","score-submit"],
+    reasonIfBefore: "Scores come from play + submission."
+  },
+  {
+    id: "players-appear-explorer",
+    label: "Players Appear in Explorer",
+    type: "players", phase: "mock",
+    dependsOn: ["explorer-ui","players-receive-scores"],
+    reasonIfBefore: "Explorer needs data to show."
+  },
+  {
+    id: "players-claim-mock",
+    label: "Players Claim Mock Rewards",
+    type: "players", phase: "mock",
+    dependsOn: ["mock-claim-system","leaderboard-mock","players-receive-scores"],
+    reasonIfBefore: "Claims rely on rank + recorded scores."
+  },
+
+  // — Reward Pool Organisers (L0) —
+  {
+    id: "rpo-view-claim-logic",
+    label: "View Tournament/Claim Logic",
+    type: "organisers", phase: "mock",
+    dependsOn: ["leaderboard-mock","mock-claim-system"],
+    reasonIfBefore: "They view after claim/board paths exist."
+  },
+  {
+    id: "rpo-simulate-fees",
+    label: "Simulate Fees (No Routing)",
+    type: "organisers", phase: "mock",
+    dependsOn: ["rpo-view-claim-logic","schema-drafts-published"],
+    reasonIfBefore: "Fee sims sit on top of visible flows + schema."
+  },
+
+  // — Ecosystem Builders (L0) —
+  {
+    id: "ecosys-see-structure",
+    label: "Ecosystem Sees Structure",
+    type: "ecosystem", phase: "mock",
+    dependsOn: ["schema-drafts-published","explorer-ui","mock-claim-system"],
+    reasonIfBefore: "Builders need artifacts to observe."
+  },
+
+  // — Service Providers (L0) —
+  {
+    id: "service-identify-opps",
+    label: "Service: Identify Onboarding Gaps",
+    type: "services", phase: "mock",
+    dependsOn: ["ecosys-see-structure","schema-drafts-published"],
+    reasonIfBefore: "Service lens activates once drafts are visible."
+  },
+
+  // — DAO & Stakers (L0) —
+  {
+    id: "dao-passive-monitoring",
+    label: "DAO Passive Monitoring",
+    type: "dao", phase: "mock",
+    dependsOn: ["schema-drafts-published","explorer-ui"],
+    reasonIfBefore: "DAO observes after schemas and visibility exist."
+  },
+  {
+    id: "stakers-dormant-slot",
+    label: "Stakers: Dormant Commission Slot",
+    type: "stakers", phase: "mock",
+    dependsOn: ["schema-drafts-published","rpo-simulate-fees"],
+    reasonIfBefore: "Commission slots ride on schema + fee sims."
+  },
 ];
+
 const ORDER = FEATURES.map(f=>f.id);
+  const byId = Object.fromEntries(FEATURES.map(f => [f.id, f]));
+
+// Relationship of A (incoming) relative to B (anchor)
+function relationOf(aId, bId){
+  if (byId[aId].dependsOn?.includes(bId)) return "after";
+  if (byId[bId].dependsOn?.includes(aId)) return "before";
+  return ORDER.indexOf(aId) < ORDER.indexOf(bId) ? "before" : "after";
+}
+
+function wrongReason(incomingId, anchorId){
+  const inc = byId[incomingId], anc = byId[anchorId];
+  const correct = relationOf(incomingId, anchorId);
+  if (correct === "after" && inc.reasonIfBefore) return inc.reasonIfBefore;
+  if (correct === "before" && inc.reasonIfAfter) return inc.reasonIfAfter;
+  return `${inc.label} should come ${correct.toUpperCase()} ${anc.label} based on L0 sequencing.`;
+}
 
 const BASE_FLIP=900, BASE_MIN=400, BASE_RAMP=50;
 const SPEED_MULT = { practice:3.0, regular:2.0, pro:1.0 };
@@ -265,29 +436,35 @@ function nextRound(){
 
 function handleClick(){
   totalAsked++;
-  const correctRel = idx(incoming) < idx(anchor) ? "before" : "after";
-  const ok = (currentState===correctRel);
+  const correctRel = relationOf(incoming, anchor);   // ✅ smarter dependency-aware relation
+  const ok = (currentState === correctRel);
   stopFlipLoop();
 
-  if(ok){
+  if (ok){
     correct++; streak++; score++;
-    flipIntervalMs=Math.max(minFlipMs,flipIntervalMs-flipRamp);
-    anchor=incoming;
-  }else{
-    fails++; streak=0; score=Math.max(0,score-1);
-    flipIntervalMs=Math.min(BASE_FLIP*4, flipIntervalMs+100);
-    anchor=incoming;
+    flipIntervalMs = Math.max(minFlipMs, flipIntervalMs - flipRamp);
+    anchor = incoming; // advance the anchor on success
+  } else {
+    fails++; streak = 0; score = Math.max(0, score - 1);
+    flipIntervalMs = Math.min(BASE_FLIP * 4, flipIntervalMs + 100);
     flashSkull();
+    toast(wrongReason(incoming, anchor, currentState)); // ✅ show reason hint
+    anchor = incoming; // still advance the anchor after an error
   }
+
   updateHud();
-  setTimeout(nextRound,220);
+  setTimeout(nextRound, 220);
 }
 
 function timeoutFail(){
-  totalAsked++; fails++; streak=0; score=Math.max(0,score-1);
-  stopFlipLoop(); flashSkull();
-  anchor=incoming; updateHud();
-  setTimeout(nextRound,220);
+  totalAsked++;
+  fails++; streak = 0; score = Math.max(0, score - 1);
+  stopFlipLoop();
+  flashSkull();
+  toast(wrongReason(incoming, anchor, "timeout")); // ✅ explain why it should be before/after
+  anchor = incoming; // move the anchor forward even on timeout
+  updateHud();
+  setTimeout(nextRound, 220);
 }
 
 function updateHud(){
