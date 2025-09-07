@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CGT – Founders L0: Custodianship Rope</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --ink:#eaf2ff; --muted:#9fb3cc;
+    --accent:#5ee1a2; --warn:#ffb84d; --danger:#ff6b6b;
+    --rope:#2a3646; --node:#324156;
+    --btn:#1d2633; --btn-hover:#243144; --btn-ring:#5ee1a2;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:linear-gradient(180deg,#0b0f14 0%,#0d131b 100%);
+    color:var(--ink); font:16px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+  }
+  header{
+    position:sticky; top:0; z-index:5;
+    background:rgba(11,15,20,.72); -webkit-backdrop-filter:saturate(140%) blur(10px); backdrop-filter:saturate(140%) blur(10px);
+    border-bottom:1px solid #17202b; padding:.75rem 1rem;
+    display:flex; align-items:center; gap:.75rem;
+  }
+  .brand{font-weight:700; letter-spacing:.3px}
+  .chip{font-size:.8rem; color:var(--muted)}
+  .meter{
+    margin-left:auto; display:flex; align-items:center; gap:.5rem;
+  }
+  .bar{width:140px; height:8px; background:#17202b; border-radius:999px; overflow:hidden; border:1px solid #223042}
+  .fill{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#6be9cd); transition:width .35s ease}
+  .score{font-variant-numeric:tabular-nums}
+  main{
+    max-width:900px; margin:0 auto; padding:1rem .75rem 5rem;
+    display:grid; grid-template-columns: minmax(68px,120px) 1fr; gap:1rem;
+  }
+  /* Rope column */
+  .rope-col{position:relative; padding-top:.5rem}
+  .rope{
+    position:sticky; top:68px; height:calc(100vh - 88px); width:6px; margin:0 auto;
+    background:linear-gradient(180deg,transparent 0, var(--rope) 16px, var(--rope) calc(100% - 16px), transparent 100%);
+    border-radius:999px; box-shadow:0 0 0 1px #1e2936 inset;
+  }
+  /* Entries stack */
+  .stack{position:relative}
+  .entry{
+    background:var(--panel); border:1px solid #1f2a37; border-radius:14px; padding:1rem;
+    margin:0 0 1rem 0; position:relative; box-shadow:0 10px 24px rgba(0,0,0,.25);
+  }
+  .entry::before{
+    content:""; position:absolute; left:-18px; top:14px; width:12px; height:12px;
+    background:var(--node); border:2px solid #233246; border-radius:50%;
+    box-shadow:0 0 0 3px #0e141c, 0 0 0 6px #111824;
+  }
+  .kicker{font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted)}
+  h2{margin:.25rem 0 .5rem; font-size:1.05rem}
+  p{margin:.25rem 0 .75rem; color:#cadeff; opacity:.92}
+  .choices{display:flex; flex-wrap:wrap; gap:.5rem}
+  button.choice{
+    appearance:none; border:1px solid #2a3a4e; background:var(--btn); color:var(--ink);
+    padding:.75rem .9rem; border-radius:12px; cursor:pointer; font-weight:600;
+    transition:transform .05s ease, background .2s ease, border-color .2s ease;
+    min-width: min(100%, 240px);
+  }
+  button.choice:hover{background:var(--btn-hover); border-color:#31445c}
+  button.choice:active{transform:translateY(1px)}
+  .note{font-size:.85rem; color:var(--muted)}
+  .delta{font-size:.85rem; margin-top:.5rem}
+  .delta.good{color:var(--accent)}
+  .delta.warn{color:var(--warn)}
+  .delta.bad{color:var(--danger)}
+  .endcard h3{margin:.25rem 0 .25rem}
+  .endcard .actions{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem}
+  .pill{padding:.5rem .75rem; border:1px dashed #33475f; border-radius:999px; color:var(--muted); font-size:.85rem}
+  /* Floating Start Again */
+  .fab{
+    position:fixed; right:16px; bottom:16px; z-index:10;
+    background:linear-gradient(180deg,#1c2735,#131b26); color:var(--ink);
+    border:1px solid #243246; border-radius:999px; padding:.9rem 1.05rem; font-weight:700;
+    box-shadow:0 12px 24px rgba(0,0,0,.35); cursor:pointer;
+  }
+  .fab:focus{outline:2px solid var(--btn-ring); outline-offset:3px}
+  .small{font-size:.82rem}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+  @media (min-width:720px){
+    button.choice{min-width:240px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Founders L0 – Custodianship</div>
+  <span class="chip">Single-file prototype • v0.1</span>
+  <div class="meter" aria-label="Custodianship Meter">
+    <span class="score" id="scoreLabel">Integrity 50</span>
+    <div class="bar" aria-hidden="true"><div class="fill" id="scoreFill" style="width:50%"></div></div>
+  </div>
+</header>
+
+<main id="app">
+  <div class="rope-col"><div class="rope" aria-hidden="true"></div></div>
+  <div class="stack" id="stack"></div>
+</main>
+
+<button class="fab" id="restartBtn" title="Start Again">↻ Start Again</button>
+
+<script>
+/* --------------------------------------------------------------------------
+   CGT – Founders L0: Custodianship Rope (single-file)
+   Core idea: each decision appears directly beneath the previous one (rope feel).
+   Tracks a "Directional Integrity" score. Exports your path for docs/whitepaper.
+--------------------------------------------------------------------------- */
+
+const state = {
+  score: 50, // 0–100 “Directional Integrity”
+  stepIndex: 0,
+  path: [],
+};
+
+const steps = [
+  {
+    id: "define-arc",
+    kicker: "Directional Integrity",
+    title: "Define the functional story arc",
+    text:
+      "How should the Founders frame the evolving multi-stakeholder narrative so that trust and influence are earned, not granted?",
+    choices: [
+      {
+        id: "arc-proof-first",
+        label: "Proof-first: ship minimal, validate in public, then scale visibility",
+        delta: +8,
+        tone: "good",
+        note: "Signals custodianship via verifiable progress; aligns with CGT’s build-then-amplify ethos.",
+        next: "sequence-visibility",
+      },
+      {
+        id: "arc-hype-first",
+        label: "Hype-first: maximize attention, backfill delivery later",
+        delta: -10,
+        tone: "bad",
+        note: "Risks narrative debt; undermines leaderboard-anchored credibility.",
+        next: "sequence-visibility",
+      },
+      {
+        id: "arc-balanced",
+        label: "Balanced: publish a thin roadmap + strict evidence gates",
+        delta: +5,
+        tone: "good",
+        note: "Sets public gates (e.g., 4-day cycles, halving milestones) as narrative scaffolding.",
+        next: "sequence-visibility",
+      },
+    ],
+  },
+  {
+    id: "sequence-visibility",
+    kicker: "Sequence of Visibility",
+    title: "Who appears first (and why)?",
+    text:
+      "Choose the initial spotlight order to preserve directional integrity and reduce governance noise.",
+    choices: [
+      {
+        id: "seq-core-first",
+        label: "Core Devs → Players → Marketing → 3rd-Party → DAO (when ready)",
+        delta: +7,
+        tone: "good",
+        note:
+          "Build proves itself (leaderboards, claims, explorer) before amplification; DAO activates on readiness.",
+        next: "voice-meta",
+      },
+      {
+        id: "seq-dao-early",
+        label: "Early DAO presence to crowd-shape the roadmap",
+        delta: -6,
+        tone: "warn",
+        note:
+          "Premature decentralization adds noise before proof. DAO ladder should log readiness first.",
+        next: "voice-meta",
+      },
+      {
+        id: "seq-marketing-first",
+        label: "Marketing first to drive traction, product follows",
+        delta: -4,
+        tone: "warn",
+        note: "Traction without primitives risks mismatch with halving/game cadence.",
+        next: "voice-meta",
+      },
+    ],
+  },
+  {
+    id: "voice-meta",
+    kicker: "Voice & Meta-Curation",
+    title: "Curate the founder’s voice and role interactions",
+    text:
+      "How should the Founders act as meta-curator while remaining the central authority at L0?",
+    choices: [
+      {
+        id: "voice-ledger-facts",
+        label: "Ledger-anchored voice: speak via shipped artifacts & cycles",
+        delta: +8,
+        tone: "good",
+        note:
+          "Let 4-day blocks, rewards claims, and explorer history be the voice; founders narrate proof.",
+        next: "guardrails",
+      },
+      {
+        id: "voice-influencer",
+        label: "Influencer-style voice: broad claims, little scaffolding",
+        delta: -8,
+        tone: "bad",
+        note: "Narrative drifts from measurable milestones; weakens trust signals.",
+        next: "guardrails",
+      },
+      {
+        id: "voice-quiet",
+        label: "Quiet voice: minimal comms until everything is perfect",
+        delta: -3,
+        tone: "warn",
+        note: "Misses the cadence rhythm; community can’t ‘feel’ the 4-day pulse.",
+        next: "guardrails",
+      },
+    ],
+  },
+  {
+    id: "guardrails",
+    kicker: "Custodianship Guardrails",
+    title: "Set explicit guardrails at L0",
+    text:
+      "Pick a guardrail that preserves platform directional integrity without over-promising.",
+    choices: [
+      {
+        id: "guard-ship-logs",
+        label: "Ship logs each cycle: what shipped, what slipped, what’s next",
+        delta: +6, tone: "good",
+        note: "Keeps rope taut: continuous, measurable progression for CryptoGamingToken.com.",
+        next: "finale",
+      },
+      {
+        id: "guard-open-vote",
+        label: "Open voting on roadmap items at L0",
+        delta: -6, tone: "bad",
+        note: "Invites governance before proofs; save for when DAO ladder is ready.",
+        next: "finale",
+      },
+      {
+        id: "guard-soft-promises",
+        label: "Soft promises & vibes; adjust later",
+        delta: -5, tone: "warn",
+        note: "Creates expectation debt; weakens founder custodianship.",
+        next: "finale",
+      },
+    ],
+  },
+  {
+    id: "finale",
+    kicker: "Outcome",
+    title: "Directional Integrity Outcome",
+    text:
+      "Review your L0 path. Export it to paste into docs/whitepaper or a CGT sprint card.",
+    choices: [
+      { id: "export", label: "📤 Export Path (copy)", action: "export" },
+      { id: "restart", label: "↻ Start Again", action: "restart" },
+    ],
+  },
+];
+
+const stackEl = document.getElementById("stack");
+const scoreFill = document.getElementById("scoreFill");
+const scoreLabel = document.getElementById("scoreLabel");
+const restartBtn = document.getElementById("restartBtn");
+
+function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
+
+function scrollToBottom(){
+  // Smoothly keep the newest entry in view (rope descent feel)
+  requestAnimationFrame(()=>window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"}));
+}
+
+function updateScore(delta=0){
+  state.score = clamp(state.score + delta, 0, 100);
+  scoreFill.style.width = state.score + "%";
+  scoreLabel.textContent = "Integrity " + state.score;
+}
+
+function addEntry(stepId){
+  const step = steps.find(s=>s.id===stepId);
+  if(!step) return;
+
+  const card = document.createElement("section");
+  card.className = "entry";
+  card.setAttribute("data-step", step.id);
+
+  const kicker = `<div class="kicker">${step.kicker}</div>`;
+  const title = `<h2>${step.title}</h2>`;
+  const text = `<p>${step.text}</p>`;
+
+  const choicesWrap = document.createElement("div");
+  choicesWrap.className = "choices";
+
+  step.choices.forEach(choice=>{
+    const btn = document.createElement("button");
+    btn.className = "choice";
+    btn.textContent = choice.label;
+    btn.addEventListener("click", ()=>handleChoice(step, choice, card));
+    choicesWrap.appendChild(btn);
+  });
+
+  card.innerHTML = kicker + title + text;
+  card.appendChild(choicesWrap);
+  stackEl.appendChild(card);
+  scrollToBottom();
+}
+
+function handleChoice(step, choice, card){
+  // Disable further clicks on this card’s buttons
+  card.querySelectorAll("button.choice").forEach(b=>b.disabled=true);
+
+  // Apply delta if present
+  if (typeof choice.delta === "number"){
+    updateScore(choice.delta);
+    const delta = document.createElement("div");
+    delta.className = "delta " + (choice.tone||"");
+    const sign = choice.delta>0?"+":"";
+    delta.textContent = `Integrity ${sign}${choice.delta} • ${choice.note||""}`;
+    card.appendChild(delta);
+  }
+
+  // Store path
+  state.path.push({
+    stepId: step.id,
+    choiceId: choice.id || choice.action,
+    label: choice.label,
+    delta: choice.delta ?? 0,
+    scoreAfter: state.score
+  });
+
+  // Next action
+  if (choice.action === "export"){
+    doExport();
+    // re-enable export in case they want to copy again
+    card.querySelectorAll("button.choice").forEach(b=>b.disabled=false);
+    return;
+  }
+  if (choice.action === "restart"){
+    restart();
+    return;
+  }
+
+  const nextId = choice.next || null;
+  if (nextId){
+    addEntry(nextId);
+  } else {
+    // Safety endcard
+    addEndcard();
+  }
+}
+
+function addEndcard(){
+  const card = document.createElement("section");
+  card.className = "entry endcard";
+  card.innerHTML = `
+    <div class="kicker">Outcome</div>
+    <h3>Path recorded</h3>
+    <p class="note">Export your decisions for the CGT docs or a sprint card.</p>
+    <div class="actions">
+      <button class="choice" onclick="doExport()">📤 Export Path (copy)</button>
+      <button class="choice" onclick="restart()">↻ Start Again</button>
+    </div>
+    <div class="pill small">CryptoGamingToken.com • L0 Founders • Rope Prototype</div>
+  `;
+  stackEl.appendChild(card);
+  scrollToBottom();
+}
+
+function doExport(){
+  const payload = {
+    game: "CGT Founders L0 – Custodianship Rope",
+    score: state.score,
+    path: state.path,
+    timestamp: new Date().toISOString()
+  };
+  const text = JSON.stringify(payload, null, 2);
+  navigator.clipboard.writeText(text).then(()=>{
+    toast("Path copied to clipboard ✅");
+  }).catch(()=>{
+    toast("Copy failed. Long-press to select text in console.");
+    console.log(text);
+  });
+}
+
+function toast(msg){
+  const t = document.createElement("div");
+  t.textContent = msg;
+  t.style.position="fixed"; t.style.left="50%"; t.style.bottom="24px"; t.style.transform="translateX(-50%)";
+  t.style.background="#101722"; t.style.border="1px solid #263448"; t.style.padding=".6rem .8rem";
+  t.style.borderRadius="10px"; t.style.color="var(--ink)"; t.style.boxShadow="0 10px 24px rgba(0,0,0,.35)";
+  t.style.zIndex="9999"; t.style.fontSize=".9rem";
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 1600);
+}
+
+function restart(){
+  // Clear stack & state (keep styles and header)
+  stackEl.innerHTML = "";
+  state.score = 50; state.stepIndex = 0; state.path = [];
+  updateScore(0);
+  addEntry("define-arc");
+}
+
+restartBtn.addEventListener("click", restart);
+
+// Boot
+addEntry("define-arc");
+</script>
+</body>
+</html>
