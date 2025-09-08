@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CGT • Dev L0 — Leaderboard (Mock MVP): Rank Router</title>
+<style>
+  :root{
+    --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+    --panel:#0f1621; --line:#233247;
+    --accent:#6be9cd; --good:#5ee1a2; --warn:#ffd166; --bad:#ff6b6b;
+    --btn:#101828; --btnB:#1b2634; --bin:#131d2a; --binB:#223249;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+       font:15px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,Roboto,Arial}
+  header{position:sticky;top:0;z-index:6;padding:.75rem 1rem;background:rgba(11,15,20,.82);
+    backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid #17202b;
+    display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
+  .brand{font-weight:800}
+  .chip{color:var(--muted)}
+  .hud{margin-left:auto;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .pill{padding:.25rem .6rem;border:1px solid #243246;border-radius:999px;color:var(--muted);font-size:.86rem}
+  .pill strong{color:var(--ink)}
+  .alert{font-weight:900;color:#fff;background:linear-gradient(180deg,#ee4b4b,#b61616);
+    border:1px solid #7d0e0e;border-radius:12px;padding:.4rem .7rem;letter-spacing:.02em;box-shadow:0 6px 16px rgba(178,21,21,.35)}
+  main{max-width:1100px;margin:0 auto;padding:1rem .9rem 4rem;display:grid;gap:1rem}
+  .stage{background:linear-gradient(180deg,#192334,#131c29);border:1px solid #223249;border-radius:16px;
+    box-shadow:0 20px 48px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);padding:1rem}
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:1rem}
+  .card{background:#0f1621;border:1px solid #223249;border-radius:14px;padding:.8rem}
+  .card h3{margin:.1rem 0 .4rem}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:.25rem .6rem;font-size:.92rem}
+  .kv .k{color:var(--muted)}
+  .kv .v{font-weight:700;color:#e9f2ff}
+  .bins{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+  .bin{background:linear-gradient(180deg,var(--bin),#0e1520);border:1px solid var(--binB);border-radius:12px;padding:.7rem;cursor:pointer;text-align:center;user-select:none}
+  .bin h4{margin:.1rem 0 .3rem}
+  .bin small{color:var(--muted)}
+  .bin:active{transform:translateY(1px)}
+  .bin.current{outline:2px solid #0f8;outline-offset:0}
+  .bin.next{outline:2px solid #08f;outline-offset:0}
+  .bin.reject{outline:2px solid #f44;outline-offset:0}
+  .leader{font-size:.92rem}
+  .leader table{width:100%;border-collapse:collapse}
+  .leader th,.leader td{padding:.35rem .4rem;border-bottom:1px solid #1d2a3a}
+  .leader th{color:#a9bfd7;text-align:left;font-weight:700}
+  .leader td{color:#eaf2ff}
+  .btn{appearance:none;border:1px solid #243246;border-radius:12px;padding:.6rem .9rem;background:var(--btn);color:var(--ink);font-weight:800;cursor:pointer}
+  .btn.primary{background:linear-gradient(180deg,#21c7ad,#16a085);border-color:#0b7e6f}
+  .btn.ghost{background:#0f1621}
+  .tog{display:inline-flex;gap:.4rem;align-items:center;border:1px solid #243246;border-radius:999px;padding:.25rem .55rem}
+  .hint{color:var(--muted);font-size:.9rem}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#101722;border:1px solid #263448;padding:.55rem .75rem;border-radius:10px;color:var(--ink);box-shadow:0 10px 24px rgba(0,0,0,.35);z-index:20}
+  /* Overlays */
+  .overlay{position:fixed;inset:0;background:rgba(6,8,12,.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:30}
+  .dialog{background:#0f1621;border:1px solid #253448;border-radius:16px;max-width:560px;width:92%;padding:1rem 1rem 1.1rem;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+  .dialog h3{margin:.1rem 0 .35rem}
+  .sub{color:var(--muted)}
+  .row.center{justify-content:center}
+  .kbd{display:inline-block;padding:.05rem .4rem;border:1px solid #2b3b50;border-radius:6px;background:#101828;font-family:ui-monospace,Menlo,monospace}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Dev L0 — Leaderboard (Mock MVP)</div>
+  <span class="chip">Rank Router • Time-boxed blocks • Idempotent upserts</span>
+  <div class="hud">
+    <div class="pill"><small>Block</small> <strong id="blockNo">1</strong>/<span id="blockTotal">3</span></div>
+    <div class="pill"><small>Time left</small> <strong id="timeLeft">—</strong>s</div>
+    <div class="pill"><small>Score</small> <strong id="score">0</strong></div>
+    <div class="pill"><small>Streak</small> <strong id="streak">0</strong></div>
+    <div class="pill"><small>Breaches</small> <strong id="breaches">0</strong></div>
+    <button class="btn" id="toggleSfx">SFX: On</button>
+    <button class="btn" id="exportBtn">📤 Export</button>
+  </div>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="wrap">
+      <!-- Left: current card + bins -->
+      <div class="card">
+        <h3>Incoming event</h3>
+        <div class="kv" id="cardKV">
+          <div class="k">ID</div><div class="v" id="evId">—</div>
+          <div class="k">Wallet</div><div class="v" id="evWallet">—</div>
+          <div class="k">Score</div><div class="v" id="evScore">—</div>
+          <div class="k">Submitted</div><div class="v" id="evTs">—</div>
+          <div class="k">Block</div><div class="v" id="evBlock">—</div>
+          <div class="k">Flags</div><div class="v" id="evFlags">—</div>
+        </div>
+        <div class="row" style="margin:.6rem 0 .4rem">
+          <label class="tog"><input type="checkbox" id="upsertToggle"> <span>Upsert (same wallet & block)</span></label>
+          <span class="hint">Shortcuts: <span class="kbd">←</span> Current • <span class="kbd">↓</span> Reject • <span class="kbd">→</span> Next • <span class="kbd">U</span> Upsert</span>
+        </div>
+        <div class="bins">
+          <div class="bin current" data-bin="current"><h4>✅ Current Block</h4><small>Accept into active window</small></div>
+          <div class="bin reject" data-bin="reject"><h4>⛔ Reject</h4><small>Invalid / spoof / unbound</small></div>
+          <div class="bin next" data-bin="next"><h4>➡️ Next Block</h4><small>Late or early for current</small></div>
+        </div>
+      </div>
+
+      <!-- Right: live leaderboard + rules -->
+      <div class="card leader">
+        <h3>Live Leaderboard (Top 5)</h3>
+        <table id="lbTable">
+          <thead><tr><th>#</th><th>Wallet</th><th>Score</th><th>Submitted</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="hint" style="margin-top:.6rem">
+          Rules: accept only scores in window; duplicates in the same block must be upserted (no double counting);
+          sort by <b>score desc</b>, tiebreaker <b>submittedAt asc</b>. Early/late → <b>Next</b>. Invalid → <b>Reject</b>.
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Intermission / Block overlay -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <h3 id="ovTitle">Block Complete</h3>
+    <div id="ovBody" class="sub">—</div>
+    <div class="row center" style="margin-top:.6rem">
+      <button class="btn primary" id="ovContinue">Continue</button>
+      <button class="btn ghost" id="ovQuit">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Difficulty overlay -->
+<div class="overlay" id="diffOverlay">
+  <div class="dialog">
+    <h3>Choose difficulty</h3>
+    <div class="sub" style="margin-bottom:.6rem">
+      Route events under time pressure. Tap a difficulty to begin (unmutes audio).
+    </div>
+    <div class="row center" style="gap:.6rem;flex-wrap:wrap">
+      <button class="btn primary" data-diff="practice">🟢 Practice</button>
+      <button class="btn primary" data-diff="standard">🟡 Standard</button>
+      <button class="btn primary" data-diff="pro">🔴 Pro</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========= Seed Fixtures (3 blocks) ========= */
+const FIX = {
+  B1: [
+    { id:"e1", wallet:"W1", score:1200, submittedAt:"2025-09-08T19:00:05Z", block:{ id:"B1", start:"2025-09-08T19:00:00Z", end:"2025-09-08T19:00:10Z" }, flags:[] },
+    { id:"e2", wallet:"W2", score:1180, submittedAt:"2025-09-08T19:00:07Z", block:{ id:"B1", start:"2025-09-08T19:00:00Z", end:"2025-09-08T19:00:10Z" }, flags:["tiebreakerCase"] },
+    { id:"e3", wallet:"W1", score:1200, submittedAt:"2025-09-08T19:00:08Z", block:{ id:"B1", start:"2025-09-08T19:00:00Z", end:"2025-09-08T19:00:10Z" }, flags:["duplicate"] },
+    { id:"e4", wallet:"W3", score:900,  submittedAt:"2025-09-08T19:00:12Z", block:{ id:"B1", start:"2025-09-08T19:00:00Z", end:"2025-09-08T19:00:10Z" }, flags:["lateBySmall"] },
+    { id:"e5", wallet:"W4", score:-50,  submittedAt:"2025-09-08T18:59:59Z", block:{ id:"B1", start:"2025-09-08T19:00:00Z", end:"2025-09-08T19:00:10Z" }, flags:["invalidScore"] },
+    { id:"e6", wallet:"W5", score:1400, submittedAt:"2025-09-08T19:00:04Z", block:{ id:"B1", start:"2025-09-08T19:00:00Z", end:"2025-09-08T19:00:10Z" }, flags:["spoofRisk"] },
+    { id:"e7", wallet:"W6", score:1000, submittedAt:"2025-09-08T19:00:03Z", block:{ id:"B1", start:"2025-09-08T19:00:00Z", end:"2025-09-08T19:00:10Z" }, flags:[] },
+    { id:"e8", wallet:"W2", score:1180, submittedAt:"2025-09-08T19:00:11Z", block:{ id:"B1", start:"2025-09-08T19:00:00Z", end:"2025-09-08T19:00:10Z" }, flags:["late"] }
+  ],
+  B2: [
+    { id:"f1", wallet:"W7", score:500,  submittedAt:"2025-09-08T19:01:02Z", block:{ id:"B2", start:"2025-09-08T19:01:00Z", end:"2025-09-08T19:01:10Z" }, flags:[] },
+    { id:"f2", wallet:"W8", score:500,  submittedAt:"2025-09-08T19:01:01Z", block:{ id:"B2", start:"2025-09-08T19:01:00Z", end:"2025-09-08T19:01:10Z" }, flags:["tiebreakerCase"] },
+    { id:"f3", wallet:"W9", score:2000, submittedAt:"2025-09-08T19:00:59Z", block:{ id:"B2", start:"2025-09-08T19:01:00Z", end:"2025-09-08T19:01:10Z" }, flags:["early"] },
+    { id:"f4", wallet:"W9", score:2000, submittedAt:"2025-09-08T19:01:03Z", block:{ id:"B2", start:"2025-09-08T19:01:00Z", end:"2025-09-08T19:01:10Z" }, flags:["duplicate"] },
+    { id:"f5", wallet:"W10", score:0,   submittedAt:"2025-09-08T19:01:04Z", block:{ id:"B2", start:"2025-09-08T19:01:00Z", end:"2025-09-08T19:01:10Z" }, flags:[] },
+    { id:"f6", wallet:"W11", score:1500,submittedAt:"2025-09-08T19:01:12Z", block:{ id:"B2", start:"2025-09-08T19:01:00Z", end:"2025-09-08T19:01:10Z" }, flags:["late"] }
+  ],
+  B3: [
+    { id:"g1", wallet:"W1",  score:300,  submittedAt:"2025-09-08T19:02:02Z", block:{ id:"B3", start:"2025-09-08T19:02:00Z", end:"2025-09-08T19:02:10Z" }, flags:[] },
+    { id:"g2", wallet:"W99", score:9999, submittedAt:"2025-09-08T19:02:03Z", block:{ id:"B3", start:"2025-09-08T19:02:00Z", end:"2025-09-08T19:02:10Z" }, flags:["spoofRisk"] },
+    { id:"g3", wallet:"W2",  score:1200, submittedAt:"2025-09-08T19:02:10Z", block:{ id:"B3", start:"2025-09-08T19:02:00Z", end:"2025-09-08T19:02:10Z" }, flags:[] },
+    { id:"g4", wallet:"W2",  score:1200, submittedAt:"2025-09-08T19:02:11Z", block:{ id:"B3", start:"2025-09-08T19:02:00Z", end:"2025-09-08T19:02:10Z" }, flags:["late"] },
+    { id:"g5", wallet:"W3",  score:-10,  submittedAt:"2025-09-08T19:01:59Z", block:{ id:"B3", start:"2025-09-08T19:02:00Z", end:"2025-09-08T19:02:10Z" }, flags:["invalidScore"] }
+  ]
+};
+
+/* ========= Difficulty & Timers ========= */
+const BLOCK_IDS = ["B1","B2","B3"];
+const DIFF_MULT = { practice: 1.5, standard: 1.2, pro: 1.0 }; // scales block duration
+const BASE_BLOCK_SECONDS = 22; // gameplay window per block (UI timer only)
+let difficulty = "pro";
+let blockDuration = Math.round(BASE_BLOCK_SECONDS * DIFF_MULT[difficulty]);
+
+/* ========= State ========= */
+let sfxEnabled = true;
+let score = 0, streak = 0, breaches = 0;
+let currentBlockIdx = 0;
+let queue = [];                // event queue for the active block
+let accepted = [];             // accepted entries for current block
+let timer = null, timeLeft = 0;
+let runLog = [];
+let ctx; // audio
+
+/* ========= DOM ========= */
+const blockNo = document.getElementById('blockNo');
+const blockTotal = document.getElementById('blockTotal');
+const timeLeftEl = document.getElementById('timeLeft');
+const scoreEl = document.getElementById('score');
+const streakEl = document.getElementById('streak');
+const breachesEl = document.getElementById('breaches');
+const evId = document.getElementById('evId');
+const evWallet = document.getElementById('evWallet');
+const evScore = document.getElementById('evScore');
+const evTs = document.getElementById('evTs');
+const evBlock = document.getElementById('evBlock');
+const evFlags = document.getElementById('evFlags');
+const upsertToggle = document.getElementById('upsertToggle');
+const bins = Array.from(document.querySelectorAll('.bin'));
+const lbTable = document.querySelector('#lbTable tbody');
+const overlay = document.getElementById('overlay');
+const ovTitle = document.getElementById('ovTitle');
+const ovBody = document.getElementById('ovBody');
+const ovContinue = document.getElementById('ovContinue');
+const ovQuit = document.getElementById('ovQuit');
+const diffOverlay = document.getElementById('diffOverlay');
+
+/* ========= Audio ========= */
+function ensureAudio() {
+  try {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === "suspended") ctx.resume();
+  } catch(e){}
+}
+function sfxClickOk() {
+  if (!sfxEnabled) return;
+  ensureAudio();
+  if (!ctx || ctx.state !== "running") return;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type="triangle"; o.frequency.value=720; g.gain.value=0.05;
+  o.connect(g); g.connect(ctx.destination); o.start();
+  setTimeout(()=>o.stop(),120);
+}
+function sfxBad() {
+  if (!sfxEnabled) return;
+  ensureAudio(); if (!ctx || ctx.state!=="running") return;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type="square"; o.frequency.value=180; g.gain.value=0.06;
+  o.connect(g); g.connect(ctx.destination); o.start();
+  setTimeout(()=>o.stop(),140);
+}
+
+/* ========= Helpers ========= */
+function toast(msg, ms=1500){
+  const t=document.createElement('div');
+  t.className='toast'; t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>t.remove(),ms);
+}
+function parseISO(s){ return new Date(s).getTime(); }
+function inWindow(ev){
+  const t = parseISO(ev.submittedAt);
+  const s = parseISO(ev.block.start);
+  const e = parseISO(ev.block.end);
+  return t >= s && t <= e;
+}
+function isLate(ev){
+  return parseISO(ev.submittedAt) > parseISO(ev.block.end);
+}
+function isEarly(ev){
+  return parseISO(ev.submittedAt) < parseISO(ev.block.start);
+}
+function isInvalid(ev){
+  if (ev.score < 0) return true;
+  if (ev.flags.includes('invalidScore')) return true;
+  if (ev.flags.includes('spoofRisk')) return true;
+  return false;
+}
+function isDuplicate(ev){
+  return ev.flags.includes('duplicate');
+}
+function upsert(accepted, ev){ // replace existing same wallet entry in this block
+  const idx = accepted.findIndex(x => x.wallet===ev.wallet);
+  if (idx >= 0) { accepted[idx] = ev; }
+  else { accepted.push(ev); }
+}
+function sortLeaderboard(arr){
+  arr.sort((a,b)=>{
+    if (b.score !== a.score) return b.score - a.score;
+    return parseISO(a.submittedAt) - parseISO(b.submittedAt);
+  });
+}
+function renderLB(){
+  const copy = accepted.slice();
+  sortLeaderboard(copy);
+  lbTable.innerHTML='';
+  copy.slice(0,5).forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td>${r.wallet}</td><td>${r.score}</td><td>${r.submittedAt.split('T')[1].replace('Z','')}</td>`;
+    lbTable.appendChild(tr);
+  });
+}
+function showCard(ev){
+  evId.textContent = ev.id;
+  evWallet.textContent = ev.wallet;
+  evScore.textContent = ev.score;
+  evTs.textContent = ev.submittedAt.split('T')[1].replace('Z','');
+  evBlock.textContent = `${ev.block.id} (${ev.block.start.split('T')[1].replace('Z','')} → ${ev.block.end.split('T')[1].replace('Z','')})`;
+  evFlags.textContent = ev.flags.length ? ev.flags.join(', ') : '—';
+  upsertToggle.checked = false;
+}
+function currentEvent(){ return queue[0] || null; }
+
+/* ========= Scoring logic =========
+  +2 correct bin
+  +1 bonus if duplicate & upsert used correctly
+  -2 critical: accepting invalid into Current, or accepting Early/Late into Current
+  -1 soft: harmless misroute (e.g., Next instead of Current, or Reject a valid)
+*/
+function judge(ev, bin, upsertUsed){
+  const truth = {
+    mustReject: isInvalid(ev),
+    isDup: isDuplicate(ev),
+    inWin: inWindow(ev),
+    early: isEarly(ev),
+    late: isLate(ev)
+  };
+  // Determine correct bin
+  let correctBin = "current";
+  if (truth.mustReject) correctBin = "reject";
+  else if (truth.early || truth.late) correctBin = "next";
+  else correctBin = "current";
+
+  let delta = 0, breach = false, note = "";
+
+  if (bin === correctBin){
+    delta += 2;
+    if (truth.isDup && correctBin==="current"){
+      if (upsertUsed){ delta += 1; note="upsert_ok"; }
+      else { delta -= 1; note="dup_missing_upsert"; } // soft miss if forgot upsert
+    }
+  } else {
+    // critical if you promoted invalid/early/late into current
+    if (bin==="current" && (truth.mustReject || truth.early || truth.late)){
+      delta -= 2; breach = true; note="critical_promote";
+    } else {
+      delta -= 1; note="soft_misroute";
+    }
+  }
+
+  return { correctBin, delta, breach, note };
+}
+
+/* ========= Flow ========= */
+function nextEvent(){
+  queue.shift();
+  if (!queue.length){
+    // block ends early (all events processed) — freeze
+    endBlock("all_processed");
+    return;
+  }
+  showCard(queue[0]);
+}
+function route(bin){
+  const ev = currentEvent(); if (!ev) return;
+  const up = !!upsertToggle.checked;
+  const verdict = judge(ev, bin, up);
+
+  score += verdict.delta;
+  score = Math.max(0, score);
+  if (verdict.delta >= 2) { streak++; sfxClickOk(); }
+  else { streak = 0; if (verdict.delta < 0) sfxBad(); }
+  if (verdict.breach) { breaches++; toast("⚠️ Critical breach: late/invalid promoted into Current", 1600); }
+
+  // Apply to leaderboard if accepted into current
+  if (bin === "current" && !verdict.breach){
+    if (isDuplicate(ev) || up) { upsert(accepted, ev); }
+    else {
+      // prevent double-count per wallet: treat as latest (idempotent flavor)
+      upsert(accepted, ev);
+    }
+    renderLB();
+  }
+
+  // Log
+  runLog.push({
+    block: ev.block.id, id: ev.id, wallet: ev.wallet, score: ev.score,
+    binChosen: bin, binCorrect: verdict.correctBin, upsert: up,
+    delta: verdict.delta, breach: verdict.breach, note: verdict.note,
+    ts: new Date().toISOString()
+  });
+
+  // UI update and next
+  scoreEl.textContent = String(score);
+  streakEl.textContent = String(streak);
+  breachesEl.textContent = String(breaches);
+  nextEvent();
+}
+function startBlock(){
+  // setup state
+  const blockId = BLOCK_IDS[currentBlockIdx];
+  blockNo.textContent = String(currentBlockIdx+1);
+  accepted = [];
+  queue = (FIX[blockId] || []).slice();
+  // simple shuffle for freshness
+  for(let i=queue.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [queue[i],queue[j]]=[queue[j],queue[i]]; }
+  renderLB();
+  showCard(queue[0]);
+  // start timer
+  timeLeft = blockDuration;
+  timeLeftEl.textContent = String(timeLeft);
+  if (timer) clearInterval(timer);
+  timer = setInterval(()=>{
+    timeLeft--; timeLeftEl.textContent = String(timeLeft);
+    if (timeLeft<=0){ clearInterval(timer); timer=null; endBlock("timeout"); }
+  },1000);
+}
+function endBlock(reason){
+  if (timer){ clearInterval(timer); timer=null; }
+  // compute correctness of final order vs reference (for a small bonus/feedback)
+  const lbCopy = accepted.slice(); sortLeaderboard(lbCopy);
+  const correctOrder = lbCopy.length ? true : true; // placeholder check; could compare to a canonical sort of accepted
+  const msg = reason==="timeout" ? "Block timer ended." :
+              reason==="all_processed" ? "All events routed." : "Closed.";
+  ovTitle.textContent = `Block ${currentBlockIdx+1} complete`;
+  ovBody.innerHTML = `<div class="sub">${msg} Routed: <b>${(FIX[BLOCK_IDS[currentBlockIdx]]||[]).length}</b> • Accepted: <b>${accepted.length}</b><br/>Current score: <b>${score}</b> • Breaches: <b>${breaches}</b></div>`;
+  overlay.style.display = "flex";
+}
+function continueFlow(){
+  overlay.style.display="none";
+  currentBlockIdx++;
+  if (currentBlockIdx >= BLOCK_IDS.length){
+    // End of run: grade
+    const acc = accuracyScore();
+    const title = acc>=0.85 && breaches===0 ? "⭐️⭐️⭐️ Core Developer" :
+                  acc>=0.61 && breaches<=2 ? "⭐️⭐️ Average Developer" :
+                  "⭐️ Sloppy Developer";
+    ovTitle.textContent = "Run Complete";
+    ovBody.innerHTML = `<div class="sub">Final Score: <b>${score}</b> • Accuracy: <b>${(acc*100|0)}%</b> • Breaches: <b>${breaches}</b><br/>Grade: <b>${title}</b></div>`;
+    ovContinue.textContent = "Start Again";
+    ovContinue.onclick = ()=>{ overlay.style.display="none"; resetRun(); };
+    overlay.style.display="flex";
+    return;
+  }
+  startBlock();
+}
+function accuracyScore(){
+  if (!runLog.length) return 0;
+  const correct = runLog.filter(r=>r.binChosen===r.binCorrect).length;
+  return correct / runLog.length;
+}
+function resetRun(){
+  score=0; streak=0; breaches=0; runLog=[];
+  scoreEl.textContent="0"; streakEl.textContent="0"; breachesEl.textContent="0";
+  currentBlockIdx=0;
+  startBlock();
+}
+
+/* ========= UI Wiring ========= */
+document.getElementById('toggleSfx').addEventListener('click', ()=>{
+  sfxEnabled = !sfxEnabled;
+  document.getElementById('toggleSfx').textContent = `SFX: ${sfxEnabled?'On':'Off'}`;
+  if (sfxEnabled) sfxClickOk();
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const payload = {
+    game: "Dev L0 — Leaderboard: Rank Router",
+    difficulty, blocksPlayed: currentBlockIdx+1,
+    accuracy: accuracyScore(),
+    breaches, streakFinal: streak, scoreFinal: score,
+    run: runLog, timestamp: new Date().toISOString()
+  };
+  const text = JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(text).then(()=>toast("Run exported to clipboard ✅")).catch(()=>{console.log(text);toast("Copy failed. Check console.");});
+});
+bins.forEach(b => b.addEventListener('click', ()=>{
+  ensureAudio();
+  route(b.dataset.bin);
+}));
+document.addEventListener('keydown', (e)=>{
+  if (e.key==="ArrowLeft") route("current");
+  else if (e.key==="ArrowRight") route("next");
+  else if (e.key==="ArrowDown") route("reject");
+  else if (e.key.toLowerCase()==="u") upsertToggle.checked = !upsertToggle.checked;
+});
+
+ovContinue.addEventListener('click', continueFlow);
+ovQuit.addEventListener('click', ()=> overlay.style.display="none");
+
+/* ========= Difficulty boot ========= */
+diffOverlay.querySelectorAll('[data-diff]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    difficulty = btn.dataset.diff;
+    blockDuration = Math.round(BASE_BLOCK_SECONDS * DIFF_MULT[difficulty] || BASE_BLOCK_SECONDS);
+    diffOverlay.style.display="none";
+    document.body.click(); // unlock audio on gesture flows
+    blockTotal.textContent = String(BLOCK_IDS.length);
+    resetRun();
+  });
+});
+
+/* ========= Start ========= */
+(function boot(){
+  diffOverlay.style.display="flex";
+})();
+</script>
+</body>
+</html>
