@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT • Dev L0 — Leaderboard (Mock MVP)</title>
+<style>
+:root{
+  --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+  --panel:#101826; --line:#233247;
+  --good:#57d39d; --bad:#ff6b6b; --warn:#59b0ff;
+  --btn:#0f1724; --accent:#6be9cd; --pill:#1a2433;
+}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+     font:15px/1.45 ui-sans-serif,system-ui,-apple-system,Inter,Segoe UI,Roboto,Arial}
+header{position:sticky;top:0;z-index:5;padding:.8rem 1rem;background:rgba(11,15,20,.82);
+       backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid #17202b}
+.brand{font-weight:800}
+main{max-width:980px;margin:0 auto;padding:1rem .9rem 5rem;display:grid;gap:1rem}
+.stage{background:linear-gradient(180deg,#162233,#101a27);border:1px solid #233247;border-radius:16px;
+       box-shadow:0 20px 48px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);padding:1rem}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.pill{padding:.3rem .6rem;border:1px solid #26384f;border-radius:999px;background:var(--pill);color:var(--muted)}
+.btn{appearance:none;border:1px solid #2a3c55;border-radius:12px;padding:.65rem .95rem;background:var(--btn);
+     color:#fff;font-weight:700;cursor:pointer}
+.btn.primary{background:linear-gradient(180deg,#19b7c8,#0ea1ad);border-color:#0a8692}
+.btn.good{background:linear-gradient(180deg,#30c288,#279d70);border-color:#1f7c59}
+.btn.bad{background:linear-gradient(180deg,#f46b6b,#c84d4d);border-color:#912f2f}
+.btn:active{transform:translateY(1px)}
+.card{border:1px solid #233247;border-radius:14px;background:#0f1623;padding:1rem}
+.h2{font-weight:800;margin:.2rem 0 .4rem}
+.table{width:100%;border-collapse:collapse;font-size:.95rem}
+.table th,.table td{border-bottom:1px solid #1e2b3e;padding:.55rem .5rem;text-align:left}
+.table th{color:#a8bdd7;font-weight:800}
+.flag.good{color:var(--good)} .flag.bad{color:var(--bad)} .flag.warn{color:var(--warn)}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:.35rem .6rem;color:#c8d5e8}
+.kv .k{color:#9fb3cc}
+.flex-b{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap}
+.footerBar{position:sticky;bottom:0;z-index:4;padding:.7rem 1rem;border-top:1px solid #17202b;
+  background:linear-gradient(180deg,#0b0f14 10%,#0c121a)}
+.overlay{position:fixed;inset:0;background:rgba(6,8,12,.78);backdrop-filter:blur(6px);
+         display:none;align-items:center;justify-content:center;z-index:30}
+.dialog{background:#0f1623;border:1px solid #233247;border-radius:16px;max-width:560px;width:92%;
+        padding:1rem 1rem 1.1rem;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.dialog h3{margin:.1rem 0 .35rem}
+.sub{color:var(--muted)}
+.grid{display:grid;gap:1rem}
+@media(min-width:880px){ .grid{grid-template-columns:1.2fr .8fr} }
+.bigblood{font-weight:900;color:#fff;background:linear-gradient(180deg,#ee4b4b,#b61616);
+  border:1px solid #7d0e0e;border-radius:12px;padding:.35rem .6rem;box-shadow:0 6px 16px rgba(178,21,21,.35)}
+.small{font-size:.86rem}
+.hr{height:1px;background:#1c2a3c;margin:.6rem 0}
+.badge{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .55rem;border:1px dashed #2b3b52;border-radius:999px;color:#9fb3cc}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Dev L0 — Leaderboard (Mock MVP)</div>
+  <div class="row" style="margin-top:.35rem">
+    <span class="pill">Blocks: <b id="blockNum">1</b>/3</span>
+    <span class="pill">Cards: <span id="cardsPill"><b id="cardNum">0</b>/—</span></span>
+    <span class="pill">Score: <b id="score">0</b></span>
+    <span class="pill">Streak: <b id="streak">0</b></span>
+    <span class="bigblood">Live Window: <b id="winTxt">—</b></span>
+  </div>
+</header>
+
+<main id="app" class="grid" style="display:none">
+  <!-- Leaderboard (top on mobile) -->
+  <section class="card">
+    <div class="flex-b">
+      <div class="h2">Live Leaderboard (Top 5)</div>
+      <span class="badge">Only accepted cards are listed</span>
+    </div>
+    <table class="table" id="lb">
+      <thead><tr><th>#</th><th>Wallet</th><th>Score</th><th>Submitted</th><th>Flag</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- Incoming card -->
+  <section class="card" id="incomingCard">
+    <div class="h2">Incoming submission</div>
+    <div class="kv">
+      <div class="k">Tx</div><div id="txId">—</div>
+      <div class="k">Wallet</div><div id="wallet">—</div>
+      <div class="k">Score</div><div id="scoreIn">—</div>
+      <div class="k">GQT</div><div id="gqtIn">—</div>
+      <div class="k">Submitted</div><div id="timeIn">—</div>
+    </div>
+    <div class="hr"></div>
+    <div class="flex-b">
+      <button class="btn good" id="btnAccept">✔︎ Current Block</button>
+      <button class="btn bad" id="btnReject">✖︎ Reject</button>
+    </div>
+    <div class="small" style="margin-top:.6rem;color:#9fb3cc">Goal: keep the table above <b>clean</b>. Only accept cards that pass all checks.</div>
+  </section>
+</main>
+
+<!-- Footer controls -->
+<div class="footerBar">
+  <div class="row" style="justify-content:space-between">
+    <div class="row">
+      <button class="btn" id="restart">↻ Start Again</button>
+      <button class="btn" id="exportBtn">📤 Export run</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="musicBtn">Music: On</button>
+      <button class="btn" id="sfxBtn">SFX: On</button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlays -->
+<div class="overlay" id="introOv">
+  <div class="dialog">
+    <h3>CGT • Dev L0 — Leaderboard (Mock MVP)</h3>
+    <p class="sub" style="margin:.35rem 0 .7rem">
+      <b>You’ve been transported into the CGT leaderboard code.</b><br>
+      Think like a <b>Core Developer</b>: add or reject submissions to keep player leaderboards clean.
+    </p>
+    <div class="h3">Choose difficulty</div>
+    <div class="row" style="gap:.6rem;flex-wrap:wrap;margin:.4rem 0 .8rem">
+      <button class="btn primary" data-diff="practice">🟢 Practice</button>
+      <button class="btn primary" data-diff="standard">🟡 Standard</button>
+      <button class="btn primary" data-diff="pro">🔴 Pro</button>
+    </div>
+    <div class="sub small">
+      Difficulty changes card speed and how subtle mistakes are.<br>
+      You’ll play <b>3 blocks</b>. Overall rank = total score across blocks.
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="paramsOv">
+  <div class="dialog">
+    <h3>Block parameters</h3>
+    <div class="kv" style="margin:.4rem 0 .6rem">
+      <div class="k">Block</div><div><b id="pBlockIdx">1/3</b></div>
+      <div class="k">GQT ID</div><div id="pGqt">—</div>
+      <div class="k">Score range</div><div id="pRange">—</div>
+      <div class="k">Window</div><div id="pWindow">—</div>
+    </div>
+    <div class="sub" style="margin:.2rem 0 .6rem">
+      <b>Instructions</b><br>
+      👀 Check GQT ID<br>
+      👀 Check Score Range<br>
+      👀 Check Block Time<br>
+      🌟 Bonus: reject submissions that fail checks ❌
+    </div>
+    <div class="row">
+      <button class="btn primary" id="startBlock">Start block</button>
+      <button class="btn" id="cancelParams">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="blockOv">
+  <div class="dialog">
+    <h3 id="blockTitle">Block complete</h3>
+    <div id="blockSummary" class="sub" style="margin:.3rem 0 .6rem">—</div>
+    <div class="row">
+      <button class="btn primary" id="nextBlock">Next block</button>
+      <button class="btn" id="quit">Quit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Music -->
+<audio id="bgm" preload="auto" loop
+  src="https://raw.githubusercontent.com/cryptogamingtoken/cgt-games/main/sandbox/assets/Xdeviruchi%20-%208-Bit%20Fantasy%20Adventure%20Music%20(64%20KBps).mp3"></audio>
+
+<script>
+/* ======= Constants / State ======= */
+const LB_SIZE = 5;
+const CARDS_PER_BLOCK = 30;   // up to 30 cards
+const BLOCKS = 3;
+const FOUR_HOURS = 1000*60*60*4;
+
+let difficulty = 'standard';
+let run=[], score=0, streak=0, blockIndex=0, lbRows=[], shown=0, timer=null;
+let params=null, currentCard=null, seenTx=new Set();
+let musicOn=true, sfxOn=true;
+const ctx = (window.AudioContext? new (window.AudioContext||window.webkitAudioContext)():null);
+
+/* ======= DOM ======= */
+const introOv = document.getElementById('introOv');
+const paramsOv = document.getElementById('paramsOv');
+const blockOv = document.getElementById('blockOv');
+const app = document.getElementById('app');
+const lbBody = document.querySelector('#lb tbody');
+const txIdEl=tx('txId'), walletEl=tx('wallet'), scoreInEl=tx('scoreIn'), gqtInEl=tx('gqtIn'), timeInEl=tx('timeIn');
+const cardNum=tx('cardNum'), scoreEl=tx('score'), streakEl=tx('streak'), blockNum=tx('blockNum'), winTxt=tx('winTxt');
+const musicBtn=tx('musicBtn'), sfxBtn=tx('sfxBtn');
+function tx(id){return document.getElementById(id);}
+function setCardsPill(max){ document.getElementById('cardsPill').innerHTML = `<b id="cardNum">0</b>/${max}`; }
+
+/* ======= Audio ======= */
+function unlockAudio(){ try{ bgm.volume=0.35; if(musicOn) bgm.play().catch(()=>{}); }catch(e){} }
+document.addEventListener('pointerdown', unlockAudio,{once:true,passive:true});
+function blip(freq=520,ms=80,gain=0.07){
+  if(!sfxOn||!ctx) return;
+  const o=ctx.createOscillator(), g=ctx.createGain(); o.type='sine'; o.frequency.value=freq; g.gain.value=gain;
+  o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),ms);
+}
+
+/* big feedback + sfx for rejects */
+let _actx;
+function ensureCtx(){ if(!_actx) _actx = new (window.AudioContext||window.webkitAudioContext)(); if(_actx.state==='suspended') _actx.resume(); }
+function flashHUD(emoji, good=true){
+  const d=document.createElement('div');
+  d.textContent=emoji;
+  Object.assign(d.style,{position:'fixed',inset:'0',display:'flex',alignItems:'center',justifyContent:'center',
+    fontSize:'18vw',lineHeight:1,zIndex:999,pointerEvents:'none',
+    color: good?'#57d39d':'#ff6b6b', textShadow:'0 12px 40px rgba(0,0,0,.35)',
+    opacity:'0', transform:'scale(.8)', transition:'opacity .12s ease, transform .18s ease'});
+  document.body.appendChild(d);
+  requestAnimationFrame(()=>{d.style.opacity='1'; d.style.transform='scale(1)';});
+  setTimeout(()=>{ d.style.opacity='0'; d.style.transform='scale(1.1)'; }, 420);
+  setTimeout(()=>d.remove(), 720);
+}
+function cheerSfx(){ if(!sfxOn) return; ensureCtx();
+  const t=_actx.currentTime, tones=[660,825,990];
+  tones.forEach((f,i)=>{ const o=_actx.createOscillator(), g=_actx.createGain();
+    o.type='square'; o.frequency.value=f; g.gain.setValueAtTime(0,t+i*.02);
+    g.gain.linearRampToValueAtTime(.06,t+i*.02+.03);
+    g.gain.exponentialRampToValueAtTime(.0001,t+i*.02+.2);
+    o.connect(g); g.connect(_actx.destination); o.start(t+i*.02); o.stop(t+i*.02+.2);
+  });
+}
+function ghostSfx(){ if(!sfxOn) return; ensureCtx();
+  const t=_actx.currentTime, o=_actx.createOscillator(), g=_actx.createGain();
+  o.type='sawtooth'; o.frequency.setValueAtTime(880,t); o.frequency.exponentialRampToValueAtTime(180,t+.35);
+  g.gain.setValueAtTime(.08,t); g.gain.exponentialRampToValueAtTime(.0001,t+.4);
+  o.connect(g); g.connect(_actx.destination); o.start(t); o.stop(t+.42);
+}
+
+/* ======= Difficulty ======= */
+const DIFF = {
+  practice:{ cardMs: 2500*3, label:'Practice' },
+  standard:{ cardMs: 2500*2, label:'Standard' },
+  pro:{ cardMs: 2500*1, label:'Pro' }
+};
+
+/* ======= Generators ======= */
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function randomWallet(){ return Math.random().toString(36).slice(2,15); } // long; we shorten on display
+function fmtWalletShort(w){ return w.slice(0,7)+'…'+w.slice(-3); }
+function newGQT(){ return `GQT-${randInt(100,99999)}`; }
+function now(){ return Date.now(); }
+function fmtTime(t){ const d=new Date(t); return d.toTimeString().slice(0,8); }
+
+function makeParams(){
+  const start = now();
+  const end = start + FOUR_HOURS; // 4h window
+  const gqt = newGQT();
+  const minScore = randInt(600,900), maxScore = minScore + randInt(200,400);
+  return { block: `${blockIndex+1}/${BLOCKS}`, gqt, start, end, minScore, maxScore };
+}
+
+/* deck builder scaled to CARDS_PER_BLOCK */
+function buildDeck(p, diff){
+  const deck=[];
+  const baseTx = ()=>'tx-'+Math.random().toString(36).slice(2,7);
+  const correct = ()=>({ kind:'ok', tx:baseTx(), wallet:randomWallet(),
+    score: randInt(p.minScore, p.maxScore), gqt:p.gqt,
+    ts: randInt(p.start+10000, p.end-10000) });
+
+  const wrong = {
+    spoofScore: ()=>{
+      let s;
+      if(diff==='practice'){ s = randInt(p.maxScore+2000,p.maxScore+5000); }
+      else if(diff==='standard'){ s = randInt(p.maxScore+400,p.maxScore+900); }
+      else { s = p.maxScore + randInt(50,140); }
+      return {kind:'spoofScore', tx:baseTx(), wallet:randomWallet(), score:s, gqt:p.gqt, ts:randInt(p.start+10000,p.end-10000)};
+    },
+    wrongBlock: ()=>{
+      let delta;
+      if(diff==='practice'){ delta = (5+randInt(0,3))*60*60*1000; }           // 5–8h off
+      else if(diff==='standard'){ delta = (Math.random()<.5?-1:1)*60*60*1000; } // ±1h
+      else { delta = (Math.random()<.5?-1:1)*randInt(2,8)*60*1000; }           // minutes off
+      return {kind:'wrongBlock', tx:baseTx(), wallet:randomWallet(),
+              score:randInt(p.minScore,p.maxScore), gqt:p.gqt, ts: randInt(p.start+10000,p.end-10000)+delta};
+    },
+    wrongGQT: ()=>{
+      if(diff==='practice'){ return {kind:'wrongGQT', tx:baseTx(), wallet:randomWallet(), score:randInt(p.minScore,p.maxScore),
+                                     gqt:'GQT-'+randInt(1000000,9999999), ts:randInt(p.start+10000,p.end-10000)}; }
+      if(diff==='standard'){ return {kind:'wrongGQT', tx:baseTx(), wallet:randomWallet(), score:randInt(p.minScore,p.maxScore),
+                                     gqt:'GQT-'+randInt(100,99999), ts:randInt(p.start+10000,p.end-10000)}; }
+      const num = p.gqt.split('-')[1]; const pos = randInt(0,num.length-1);
+      const rep = ((+num[pos]+1)%10).toString();
+      return {kind:'wrongGQT', tx:baseTx(), wallet:randomWallet(), score:randInt(p.minScore,p.maxScore),
+              gqt:'GQT-'+(num.slice(0,pos)+rep+num.slice(pos+1)), ts:randInt(p.start+10000,p.end-10000)};
+    },
+    duplicate: (from)=>({ ...from, kind:'duplicate', tx:from.tx })
+  };
+
+  // target mix per difficulty (approx.)
+  let targets;
+  if(diff==='practice') targets = {ok:.67, wrong:.33};         // ~2:1
+  else if(diff==='standard') targets = {ok:.5, wrong:.5};
+  else targets = {ok:.4, wrong:.6};
+
+  const total = CARDS_PER_BLOCK;
+  const wantOk = Math.max(2, Math.round(total*targets.ok));
+  const wantWrong = total - wantOk;
+
+  for(let i=0;i<wantOk;i++) deck.push(correct());
+  const wrongers = [wrong.spoofScore, wrong.wrongBlock, wrong.wrongGQT];
+  for(let i=0;i<wantWrong;i++){
+    const maker = wrongers[i % wrongers.length];
+    deck.push(maker());
+  }
+  // add 1 duplicate in pro
+  if(diff==='pro' && deck.length){
+    const pick = deck.find(c=>c.kind==='ok') || deck[0];
+    deck.push(wrong.duplicate(pick));
+    if(deck.length>total) deck.length = total;
+  }
+  return deck.sort(()=>Math.random()-0.5);
+}
+
+/* ======= Flow ======= */
+function show(el){ el.style.display='flex'; }
+function hide(el){ el.style.display='none'; }
+function setCards(){ setCardsPill(CARDS_PER_BLOCK); cardNum.textContent = `0/${CARDS_PER_BLOCK}`; }
+
+function startRun(){
+  run=[]; score=0; streak=0; blockIndex=0; seenTx.clear();
+  app.style.display='grid';
+  nextBlock(true);
+}
+
+function nextBlock(){
+  if(blockIndex>=BLOCKS){ endRun(); return; }
+  lbRows=[]; lbBody.innerHTML='';
+  shown=0; clearTimer();
+  params = makeParams();
+  document.getElementById('pBlockIdx').textContent = `${blockIndex+1}/${BLOCKS}`;
+
+  const gqtNum = params.gqt.split('-')[1];
+  document.getElementById('pGqt').innerHTML = `GQT-<b>${gqtNum}</b>`;
+  document.getElementById('pRange').innerHTML = `<b>${params.minScore}</b> – <b>${params.maxScore}</b>`;
+  document.getElementById('pWindow').innerHTML = `<b>${fmtTime(params.start)}</b> → <b>${fmtTime(params.end)}</b> (${Math.round((params.end-params.start)/36e5)}h)`;
+  document.getElementById('winTxt').textContent = `${fmtTime(params.start)} → ${fmtTime(params.end)}`;
+  document.getElementById('blockNum').textContent = String(blockIndex+1);
+  show(paramsOv);
+}
+
+function beginBlock(){
+  hide(paramsOv);
+  const deck = buildDeck(params, difficulty);
+  setCards();
+  pushNextCard();
+
+  function pushNextCard(){
+    if(shown>=CARDS_PER_BLOCK){ pauseBlock('Block complete'); return; }
+    currentCard = deck[shown++];
+    cardNum.textContent = `${shown}/${CARDS_PER_BLOCK}`;
+    renderCard(currentCard);
+    clearTimer();
+    timer = setTimeout(()=>{
+      // if correct card times out -> penalize
+      if(isCardCorrect(currentCard)){ score = Math.max(0, score-1); streak=0; blip(280,100,.09); }
+      updateHUD();
+      // if no more cards and LB not full -> end run
+      if(shown>=CARDS_PER_BLOCK && lbRows.length<LB_SIZE){ endRun(); return; }
+      pushNextCard();
+    }, DIFF[difficulty].cardMs);
+  }
+
+  document.getElementById('btnAccept').onclick = ()=>{
+    if(!currentCard) return;
+    clearTimer();
+    const correct = isCardCorrect(currentCard) && !isDuplicate(currentCard);
+    if(correct){
+      addLB(currentCard,'good');
+      score+=2; streak++; blip(760,80,.08);
+    }else{
+      const flag = duplicateOf(currentCard)?'duplicate': flagFor(currentCard);
+      addLB(currentCard, flagClass(flag), flag);
+      score = Math.max(0, score-1); streak=0; blip(220,120,.12);
+    }
+    updateHUD();
+    advanceOrPause();
+  };
+
+  document.getElementById('btnReject').onclick = ()=>{
+    if(!currentCard) return;
+    clearTimer();
+    const correctReject = (!isCardCorrect(currentCard) || isDuplicate(currentCard));
+    if(correctReject){ score+=1; streak++; cheerSfx(); flashHUD('🏆', true); }
+    else { score = Math.max(0, score-1); streak=0; ghostSfx(); flashHUD('👻', false); }
+    updateHUD();
+    advanceOrPause();
+  };
+
+  function advanceOrPause(){
+    currentCard=null;
+    if(lbRows.length>=LB_SIZE){ pauseBlock('Block complete'); }
+    else if(shown>=CARDS_PER_BLOCK){ endRun(); }
+    else pushNextCard();
+  }
+
+  function pauseBlock(title){
+    clearTimer();
+    const ok=lbRows.filter(r=>r.flag==='ok').length;
+    const bad=lbRows.length-ok;
+    const summary=`Accepted: <b>${lbRows.length}</b> (✅ ${ok} • ⚠️/❌ ${bad}) • Score so far: <b>${score}</b>`;
+    document.getElementById('blockTitle').textContent=title;
+    document.getElementById('blockSummary').innerHTML=summary;
+    show(blockOv);
+  }
+}
+
+function endRun(){
+  hide(blockOv); hide(paramsOv); hide(introOv);
+  clearTimer();
+  const totalOk = run.reduce((a,b)=>a+(b.flag==='ok'?1:0),0);
+  const text = `Blocks: ${BLOCKS} • Accepted: ${totalOk} • Final Score: ${score}`;
+  alert(`Run complete!\n${text}`);
+}
+
+/* ======= Wiring ======= */
+document.getElementById('startBlock').onclick = ()=>{ hide(blockOv); beginBlock(); };
+document.getElementById('cancelParams').onclick = ()=>{ hide(paramsOv); show(introOv); };
+document.getElementById('nextBlock').onclick = ()=>{ hide(blockOv); blockIndex++; nextBlock(); };
+document.getElementById('quit').onclick = ()=>{ hide(blockOv); show(introOv); };
+document.getElementById('restart').onclick = ()=>{ show(introOv); clearTimer(); };
+document.getElementById('exportBtn').onclick = ()=>exportRun();
+
+function renderCard(c){
+  txIdEl.textContent = c.tx;
+  walletEl.textContent = fmtWalletShort(c.wallet);
+  scoreInEl.textContent = c.score;
+  gqtInEl.textContent = c.gqt;
+  timeInEl.textContent = fmtTime(c.ts);
+}
+
+function flagFor(c){
+  if(isDuplicate(c)) return 'duplicate';
+  if(c.gqt !== params.gqt) return 'wrongGQT';
+  if(c.score < params.minScore || c.score > params.maxScore) return 'spoofScore';
+  if(c.ts < params.start || c.ts > params.end) return 'wrongBlock';
+  return 'ok';
+}
+function flagClass(flag){ return flag==='ok' ? 'good' : (flag==='wrongBlock' ? 'warn' : 'bad'); }
+function isCardCorrect(c){ return flagFor(c)==='ok'; }
+function isDuplicate(c){ return seenTx.has(c.tx); }
+function duplicateOf(c){ return seenTx.has(c.tx); }
+
+function addLB(c, cssFlag, explicitFlag){
+  seenTx.add(c.tx);
+  const flag = explicitFlag || 'ok';
+  lbRows.push({wallet:c.wallet, score:c.score, ts:c.ts, flag});
+  lbRows.sort((a,b)=> b.score - a.score || a.ts - b.ts);
+  if(lbRows.length>LB_SIZE) lbRows.length=LB_SIZE;
+  lbBody.innerHTML='';
+  lbRows.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    const td=(t)=>{const d=document.createElement('td'); d.textContent=t; return d;};
+    tr.appendChild(td(i+1));
+    tr.appendChild(td(fmtWalletShort(r.wallet)));
+    tr.appendChild(td(r.score));
+    tr.appendChild(td(fmtTime(r.ts)));
+    const f=document.createElement('td'); f.className='flag '+flagClass(r.flag);
+    f.textContent = r.flag==='ok' ? '✓ ok' :
+                    r.flag==='wrongBlock' ? '⏱ wrong block' :
+                    r.flag==='spoofScore' ? '🧪 score out' :
+                    r.flag==='wrongGQT' ? '🆔 wrong GQT' :
+                    '⛔ duplicate';
+    tr.appendChild(f);
+    lbBody.appendChild(tr);
+  });
+  run.push({block:blockIndex+1, action:'accept', tx:c.tx, wallet:c.wallet, score:c.score, gqt:c.gqt,
+            submitted:c.ts, flag});
+}
+
+function updateHUD(){ scoreEl.textContent = String(score); streakEl.textContent = String(streak); }
+function clearTimer(){ if(timer){clearTimeout(timer); timer=null;} }
+
+/* Export */
+function exportRun(){
+  const payload={ game:"Dev L0 – Leaderboard (Mock MVP)",
+    difficulty, blocks:BLOCKS, lb_size:LB_SIZE, cards_per_block:CARDS_PER_BLOCK,
+    params_per_block: {current:params, blockIndex:blockIndex+1}, score, run, ts:new Date().toISOString() };
+  const text=JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(text).then(()=>toast("Run exported ✅"))
+    .catch(()=>{ console.log(text); toast("Copy failed—check console"); });
+}
+function toast(msg){
+  const t=document.createElement('div');
+  t.textContent=msg; t.style.position='fixed'; t.style.left='50%'; t.style.bottom='18px';
+  t.style.transform='translateX(-50%)'; t.style.background='#101722';
+  t.style.border='1px solid #263448'; t.style.borderRadius='10px';
+  t.style.padding='.55rem .75rem'; t.style.zIndex='99'; t.style.color='var(--ink)';
+  t.style.boxShadow='0 10px 24px rgba(0,0,0,.35)'; document.body.appendChild(t);
+  setTimeout(()=>t.remove(),1500);
+}
+
+/* Toggles */
+musicBtn.onclick = ()=>{ musicOn=!musicOn; musicBtn.textContent=`Music: ${musicOn?'On':'Off'}`; if(musicOn){ bgm.play().catch(()=>{});} else bgm.pause(); };
+sfxBtn.onclick   = ()=>{ sfxOn=!sfxOn; sfxBtn.textContent=`SFX: ${sfxOn?'On':'Off'}`; if(sfxOn) blip(700,60,.07); };
+
+/* Difficulty start */
+introOv.querySelectorAll('[data-diff]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    difficulty = b.dataset.diff;
+    hide(introOv);
+    app.style.display='grid';
+    startRun();
+  });
+});
+
+/* boot */
+setCardsPill(CARDS_PER_BLOCK);
+show(introOv);
+</script>
+</body>
+</html>
