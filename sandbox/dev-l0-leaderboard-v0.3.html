@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CGT • Dev L0 — Leaderboard (Mock MVP)</title>
+<style>
+  :root{
+    --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+    --panel:#0f1621; --line:#233247;
+    --good:#5ee1a2; --blue:#69b0ff; --bad:#ff6b6b;
+    --pill:#101828; --pillBr:#26354a;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+       font:15px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,Roboto,Arial}
+  header{position:sticky;top:0;z-index:5;padding:.8rem 1rem;background:rgba(11,15,20,.82);
+    backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid #17202b;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+  .brand{font-weight:800}
+  .hud{margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap}
+  .pill{padding:.25rem .55rem;border:1px solid var(--pillBr);border-radius:999px;background:var(--pill);color:var(--muted);font-size:.86rem}
+  .pill strong{color:var(--ink)}
+  main{max-width:720px;margin:0 auto;padding:1rem .9rem 4rem;display:grid;gap:1rem}
+  .card{background:linear-gradient(180deg,#182435,#131b28);border:1px solid #223249;border-radius:16px;box-shadow:0 18px 40px rgba(0,0,0,.45);padding:1rem}
+  .title{font-weight:900;margin:.1rem 0 .5rem}
+  .row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+  .btn{appearance:none;border:1px solid #25405c;background:#0f1621;color:#fff;border-radius:12px;padding:.65rem .9rem;font-weight:800;cursor:pointer}
+  .btn.primary{background:linear-gradient(180deg,#27c59b,#119a7a);border-color:#0d8066}
+  .btn.danger{background:linear-gradient(180deg,#c94b51,#972d34);border-color:#7d2228}
+  .btn.ghost{background:#101828}
+  .lb{width:100%;border-collapse:collapse;border-spacing:0}
+  .lb th,.lb td{padding:.55rem .5rem;border-bottom:1px solid #223249;text-align:left;font-size:.95rem}
+  .lb th{color:#a9bfd8;font-weight:700}
+  .ok{color:var(--good)} .blue{color:var(--blue)} .bad{color:var(--bad)}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:.35rem .75rem}
+  .k{color:#a9bfd8}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+  .overlay{position:fixed;inset:0;background:rgba(6,8,12,.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:30}
+  .dialog{background:#0f1621;border:1px solid #253448;border-radius:16px;max-width:560px;width:92%;padding:1rem;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+  .dialog h3{margin:.1rem 0 .4rem}
+  .sub{color:var(--muted)}
+  .stack{display:grid;gap:.5rem}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Dev L0 — Leaderboard (Mock MVP)</div>
+  <div class="hud">
+    <div class="pill">Block <strong id="blkIdx">1</strong>/3</div>
+    <div class="pill">Time left <strong id="blkLeft">00:00</strong></div>
+    <div class="pill">Score <strong id="score">0</strong></div>
+    <div class="pill">Streak <strong id="streak">0</strong></div>
+  </div>
+</header>
+
+<main>
+  <!-- Leaderboard first (top) -->
+  <section class="card">
+    <div class="title">Live Leaderboard (Top 5)</div>
+    <table class="lb" id="lb">
+      <thead><tr><th>#</th><th>Wallet</th><th>Score</th><th>Submitted</th><th>Flag</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="sub" style="margin-top:.4rem">Goal: fill the leaderboard with clean entries during the live window.</div>
+  </section>
+
+  <!-- Incoming card second (bottom) -->
+  <section class="card">
+    <div class="title">Incoming event</div>
+    <div class="kv" id="kv"></div>
+    <div class="row" style="margin:.6rem 0 .3rem;color:#9fb3cc">Shortcuts: ✅ Accept (A) • ⛔ Reject (R)</div>
+    <div class="actions">
+      <button class="btn primary" id="btnAccept">✅ Current Block</button>
+      <button class="btn danger" id="btnReject">⛔ Reject</button>
+    </div>
+  </section>
+
+  <!-- Footer controls -->
+  <section class="row" style="justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+    <button class="btn ghost" id="restart">↻ Restart</button>
+    <div class="row">
+      <button class="btn" id="musicToggle">Music: On</button>
+      <button class="btn" id="sfxToggle">SFX: On</button>
+    </div>
+    <button class="btn" id="export">📤 Export run</button>
+  </section>
+</main>
+
+<!-- Difficulty -->
+<div class="overlay" id="diff">
+  <div class="dialog">
+    <h3>Choose difficulty</h3>
+    <div class="sub" style="margin-bottom:.6rem">
+      The difference is card speed and block time. Fill each leaderboard with clean entries only.
+    </div>
+    <div class="row" style="margin-bottom:.6rem">
+      <button class="btn primary" data-diff="practice">🟢 Practice</button>
+      <button class="btn primary" data-diff="standard">🟡 Standard</button>
+      <button class="btn primary" data-diff="pro">🔴 Pro</button>
+    </div>
+  </div>
+</div>
+
+<!-- Block parameters -->
+<div class="overlay" id="params">
+  <div class="dialog">
+    <h3>Block Parameters</h3>
+    <div class="stack mono" id="paramList"></div>
+    <div class="row" style="margin-top:.7rem">
+      <button class="btn primary" id="startBlockBtn">Start block</button>
+      <button class="btn ghost" id="backToDiff">Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- End-of-block -->
+<div class="overlay" id="blockEnd">
+  <div class="dialog">
+    <h3 id="blockEndTitle">Block complete</h3>
+    <div class="sub" id="blockEndBody">—</div>
+    <div class="row" style="margin-top:.7rem">
+      <button class="btn primary" id="nextBlockBtn">Next block</button>
+    </div>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="overlay" id="results">
+  <div class="dialog">
+    <h3 id="resTitle">Run complete</h3>
+    <div class="sub" id="resBody">—</div>
+    <div class="row" style="margin-top:.6rem">
+      <button class="btn primary" id="playAgain">Play again</button>
+      <button class="btn" id="export2">📤 Export run</button>
+    </div>
+  </div>
+</div>
+
+<!-- Music -->
+<audio id="bgm" loop preload="auto"
+  src="https://raw.githubusercontent.com/cryptogamingtoken/cgt-games/main/sandbox/assets/Xdeviruchi%20-%208-Bit%20Fantasy%20Adventure%20Music%20(64%20KBps).mp3"></audio>
+
+<script>
+/* ===== Config ===== */
+const BLOCKS_TOTAL = 3;
+const BLOCK_SLOTS = 5;
+const DURS = { practice: 360, standard: 300, pro: 240 }; // seconds
+const STREAM = { practice: 1400, standard: 1100, pro: 900 }; // ms per incoming swap
+
+// scoring
+const PTS_ACCEPT_OK   = 3;
+const PTS_REJECT_OK   = 2;
+const PTS_ACCEPT_BAD  = -2;
+const PTS_REJECT_BAD  = -1;
+
+/* ===== State ===== */
+let difficulty = 'pro';
+let blockIdx = 0;
+let blockEndAt = 0;
+let blockTimer = null;
+let streamTimer = null;
+
+let score=0, streak=0;
+let rows=[];
+let incoming=null;
+
+let currentParams = null;   // { gqtId, rangeMin, rangeMax, windowStart, windowEnd, blockNo }
+let runLog = [];
+
+let sfxOn = true, musicOn = true, audioUnlocked=false;
+
+/* ===== DOM refs ===== */
+const diff = document.getElementById('diff');
+const params = document.getElementById('params');
+const paramList = document.getElementById('paramList');
+const startBlockBtn = document.getElementById('startBlockBtn');
+const backToDiff = document.getElementById('backToDiff');
+
+const blockEnd = document.getElementById('blockEnd');
+const blockEndTitle = document.getElementById('blockEndTitle');
+const blockEndBody = document.getElementById('blockEndBody');
+const nextBlockBtn = document.getElementById('nextBlockBtn');
+
+const results = document.getElementById('results');
+const resTitle = document.getElementById('resTitle');
+const resBody = document.getElementById('resBody');
+
+const blkIdxEl = document.getElementById('blkIdx');
+const blkLeft = document.getElementById('blkLeft');
+const scoreEl = document.getElementById('score');
+const streakEl = document.getElementById('streak');
+
+const lbBody = document.querySelector('#lb tbody');
+const kv = document.getElementById('kv');
+const btnAccept = document.getElementById('btnAccept');
+const btnReject = document.getElementById('btnReject');
+
+const restart = document.getElementById('restart');
+const exportBtn = document.getElementById('export');
+const exportBtn2 = document.getElementById('export2');
+const playAgain = document.getElementById('playAgain');
+const sfxBtn = document.getElementById('sfxToggle');
+const musicBtn = document.getElementById('musicToggle');
+const bgm = document.getElementById('bgm');
+
+/* ===== Audio (SFX) ===== */
+let ctx;
+function ensureAudio(){
+  try{
+    if(!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)();
+    if(ctx.state==='suspended') ctx.resume();
+    if(musicOn && !audioUnlocked){ bgm.volume=.35; bgm.play().catch(()=>{}); audioUnlocked=true; }
+  }catch(e){}
+}
+function blip(f=880,d=0.07,v=0.08){ if(!sfxOn) return;
+  try{ ensureAudio(); if(!ctx||ctx.state!=='running') return;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.value=f; g.gain.value=v; o.connect(g); g.connect(ctx.destination);
+    o.start(); setTimeout(()=>o.stop(), d*1000);
+  }catch(e){} }
+function ding(){ blip(980,0.09,0.09); setTimeout(()=>blip(1280,0.1,0.08),110); }
+function thunk(){ blip(220,0.06,0.09); }
+
+/* ===== Utils ===== */
+const pad=n=>String(n).padStart(2,'0');
+function nowStr(){ const d=new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+function fmtLeft(sec){ sec=Math.max(0,sec); const m=Math.floor(sec/60), s=sec%60; return `${pad(m)}:${pad(s)}`; }
+const rand=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
+function randHex(n){ const a='abcdef0123456789'; let s=''; for(let i=0;i<n;i++) s+=a[rand(0,a.length-1)]; return s; }
+function toast(msg){
+  const t=document.createElement('div'); t.textContent=msg;
+  t.style.position='fixed'; t.style.left='50%'; t.style.bottom='18px'; t.style.transform='translateX(-50%)';
+  t.style.background='#101722'; t.style.border='1px solid #263448'; t.style.borderRadius='10px';
+  t.style.padding='.55rem .75rem'; t.style.zIndex='99'; t.style.color='var(--ink)'; t.style.boxShadow='0 10px 24px rgba(0,0,0,.35)';
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1400);
+}
+
+/* ===== Generators ===== */
+function makeBlockParams(blockNo){
+  const gqtId = `GQT-${rand(100,99999)}`;
+  // keep a sensible range per block
+  const base = rand(600,900);
+  const rangeMin = base;
+  const rangeMax = base + rand(300,700);
+  const now = Date.now();
+  const dur = DURS[difficulty] ?? DURS.pro;
+  const windowStart = new Date(now).toISOString();
+  const windowEnd   = new Date(now + 4*60*1000).toISOString(); // fixed 4 minutes window display
+  return { gqtId, rangeMin, rangeMax, windowStart, windowEnd, blockNo };
+}
+
+function genIncoming(){
+  // 65% valid, 35% invalid spread across reasons
+  const wallet = `${randHex(4)}…${randHex(3)}`; // 8-ish chars
+  let score = rand(300,1600);
+  const submittedAt = nowStr();
+  const block = `B${blockIdx+1}`;
+  const gqtChance = Math.random();
+
+  // choose whether event uses current block GQT or a wrong one
+  const gqtId = (gqtChance < 0.8) ? currentParams.gqtId : `GQT-${rand(100,99999)}`;
+
+  // bias score into/ out of range
+  if(Math.random()<0.6) score = rand(currentParams.rangeMin, currentParams.rangeMax);
+  return { tx: 'e'+rand(10000,99999), wallet, score, submittedAt, block, gqtId };
+}
+
+/* ===== Rendering ===== */
+function renderParams(){
+  const p=currentParams;
+  paramList.innerHTML = `
+    <div>Block: <b>${p.blockNo}/${BLOCKS_TOTAL}</b></div>
+    <div>GQT ID: <b class="mono">${p.gqtId}</b></div>
+    <div>Accepted score range: <b>${p.rangeMin}–${p.rangeMax}</b></div>
+    <div>Block time (window): <b>${new Date(p.windowStart).toLocaleTimeString()} → ${new Date(p.windowEnd).toLocaleTimeString()}</b> (4 min)</div>
+  `;
+}
+
+function renderIncomingCard(ev){
+  kv.innerHTML = `
+    <div class="k">GQT</div><div class="mono">${ev.gqtId}</div>
+    <div class="k">Wallet</div><div class="mono">${ev.wallet}</div>
+    <div class="k">Score</div><div>${ev.score}</div>
+    <div class="k">Submitted</div><div>${ev.submittedAt}</div>
+    <div class="k">Block</div><div>${ev.block}</div>
+  `;
+}
+
+function renderLB(){
+  lbBody.innerHTML='';
+  rows
+    .sort((a,b)=> b.score - a.score || (a.submittedAt.localeCompare(b.submittedAt)))
+    .slice(0,BLOCK_SLOTS)
+    .forEach((r,i)=>{
+      const tr=document.createElement('tr');
+      const cls = r.flag.type==='ok' ? 'ok' : (r.flag.type==='blue'?'blue':'bad');
+      tr.innerHTML = `<td>${i+1}</td><td class="mono">${r.wallet}</td><td>${r.score}</td><td>${r.submittedAt}</td>
+        <td class="${cls}">${r.flag.text}</td>`;
+      lbBody.appendChild(tr);
+    });
+}
+
+/* ===== Validations ===== */
+function classify(ev, when=Date.now()){
+  // time window rule (blue if wrong block time)
+  // we show a static 4-min display window; accept rule uses live block end
+  const inTime = (when <= blockEndAt);
+  // duplicates by wallet
+  const dup = rows.find(r=>r.wallet===ev.wallet);
+  // range rule (spoof)
+  const inRange = (ev.score>=currentParams.rangeMin && ev.score<=currentParams.rangeMax);
+  // gqt rule
+  const gqtOk = (ev.gqtId === currentParams.gqtId);
+
+  if(!inTime) return { type:'blue', text:'Wrong block (time)' };
+  if(!gqtOk)  return { type:'bad',  text:'Wrong GQT' };
+  if(!inRange) return { type:'bad', text:'Spoof score' };
+  if(dup)     return { type:'bad',  text:'Duplicate transaction' };
+  return { type:'ok', text:'✅' };
+}
+
+/* ===== Interactions ===== */
+function accept(){
+  if(!incoming) return;
+  const flag = classify(incoming);
+  if(flag.type==='ok'){
+    rows.push({...incoming, flag});
+    score += PTS_ACCEPT_OK; streak++; ding();
+  }else{
+    rows.push({...incoming, flag}); // wrong accept still pollutes the board
+    score += PTS_ACCEPT_BAD; streak=0; thunk();
+  }
+  scoreEl.textContent=score; streakEl.textContent=streak;
+  renderLB();
+  incoming = genIncoming(); renderIncomingCard(incoming);
+  if(rows.length>=BLOCK_SLOTS) finishBlock('filled');
+}
+function reject(){
+  if(!incoming) return;
+  const flag = classify(incoming);
+  if(flag.type==='ok'){ // wrongly rejected a valid
+    score += PTS_REJECT_BAD; streak=0; thunk();
+  } else { // correctly rejected an invalid
+    score += PTS_REJECT_OK; streak++; ding();
+  }
+  scoreEl.textContent=score; streakEl.textContent=streak;
+  incoming = genIncoming(); renderIncomingCard(incoming);
+}
+
+/* ===== Block flow ===== */
+function startTimers(){
+  clearInterval(blockTimer);
+  blockTimer = setInterval(()=>{
+    const left = Math.max(0, Math.floor((blockEndAt - Date.now())/1000));
+    blkLeft.textContent = fmtLeft(left);
+    if(left<=0) finishBlock('timeout');
+  }, 250);
+}
+function startStream(){
+  clearInterval(streamTimer);
+  streamTimer = setInterval(()=>{
+    if(Math.random()<0.40){
+      incoming = genIncoming(); renderIncomingCard(incoming);
+    }
+  }, STREAM[difficulty] ?? STREAM.pro);
+}
+
+function showBlockParams(){
+  currentParams = makeBlockParams(blockIdx+1);
+  renderParams();
+  params.style.display='flex';
+}
+function startBlock(){
+  params.style.display='none';
+  rows=[]; renderLB();
+  blkIdxEl.textContent = String(blockIdx+1);
+  // live block duration based on difficulty
+  const dur = DURS[difficulty] ?? DURS.pro;
+  blockEndAt = Date.now() + dur*1000;
+  incoming = genIncoming(); renderIncomingCard(incoming);
+  startTimers(); startStream();
+}
+function finishBlock(reason){
+  clearInterval(blockTimer); clearInterval(streamTimer);
+  const clean = rows.filter(r=>r.flag.type==='ok').length;
+  runLog.push({
+    block: blockIdx+1,
+    reason,
+    clean,
+    rows: rows.slice(),
+    scoreAfter: score
+  });
+  blockEndTitle.textContent = `Block ${blockIdx+1} complete`;
+  blockEndBody.innerHTML = `Clean rows: <b>${clean}/${BLOCK_SLOTS}</b> • Current score: <b>${score}</b>`;
+  blockEnd.style.display='flex';
+}
+
+nextBlockBtn.addEventListener('click', ()=>{
+  blockEnd.style.display='none';
+  blockIdx++;
+  if(blockIdx>=BLOCKS_TOTAL){ endRun(); }
+  else { showBlockParams(); }
+});
+
+function endRun(){
+  const totalClean = runLog.reduce((a,b)=>a+b.clean,0);
+  let title, band;
+  if(totalClean<=5)       { title='⭐ Sloppy Developer'; band='Tighten windowing & validations.'; }
+  else if(totalClean<=9)  { title='⭐⭐ Solid Developer'; band='Good routing; a few leaks remain.'; }
+  else                    { title='⭐⭐⭐ Core Developer'; band='Clean boards and strong filters.'; }
+  resTitle.textContent=title;
+  resBody.innerHTML = `Blocks: <b>${runLog.length}</b> • Clean rows: <b>${totalClean}</b> • Final score: <b>${score}</b><br><span class="sub">${band}</span>`;
+  results.style.display='flex';
+}
+
+/* ===== Difficulty / boot ===== */
+function showDiff(){ diff.style.display='flex'; }
+function hideDiff(){ diff.style.display='none'; }
+
+document.querySelectorAll('[data-diff]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    difficulty = b.dataset.diff;
+    hideDiff();
+    showBlockParams();
+    ensureAudio();
+  });
+});
+
+startBlockBtn.addEventListener('click', ()=>{ ensureAudio(); startBlock(); });
+backToDiff.addEventListener('click', ()=>{ params.style.display='none'; showDiff(); });
+
+/* ===== Buttons ===== */
+btnAccept.addEventListener('click', ()=>{ ensureAudio(); accept(); });
+btnReject.addEventListener('click', ()=>{ ensureAudio(); reject(); });
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='a'||e.key==='A') accept();
+  if(e.key==='r'||e.key==='R') reject();
+});
+
+restart.addEventListener('click', ()=>{
+  clearInterval(blockTimer); clearInterval(streamTimer);
+  blockIdx=0; score=0; streak=0; scoreEl.textContent=0; streakEl.textContent=0;
+  runLog=[]; results.style.display='none'; blockEnd.style.display='none';
+  showDiff();
+});
+
+playAgain.addEventListener('click', ()=>{ results.style.display='none'; restart.click(); });
+
+/* ===== Export ===== */
+function exportRun(){
+  const payload={ game:"Dev L0 — Leaderboard (Mock MVP) v0.3",
+    difficulty, score, streak, blocks: runLog, timestamp:new Date().toISOString() };
+  const text=JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(text).then(()=>toast("Run exported ✅")).catch(()=>{console.log(text);toast("Copy failed (see console)");});
+}
+exportBtn.addEventListener('click', exportRun);
+exportBtn2.addEventListener('click', exportRun);
+
+/* ===== Toggles ===== */
+sfxBtn.addEventListener('click',()=>{ sfxOn=!sfxOn; sfxBtn.textContent=`SFX: ${sfxOn?'On':'Off'}`; if(sfxOn) blip(); });
+musicBtn.addEventListener('click',()=>{
+  musicOn=!musicOn; musicBtn.textContent=`Music: ${musicOn?'On':'Off'}`;
+  if(musicOn){ ensureAudio(); bgm.volume=.35; bgm.play().catch(()=>{}); } else bgm.pause();
+});
+
+/* ===== iOS unlock ===== */
+['pointerdown','touchstart','click'].forEach(ev=>{
+  document.addEventListener(ev, ()=>{ ensureAudio(); }, { once:true, passive:true });
+});
+
+/* boot */
+showDiff();
+</script>
+</body>
+</html>
