@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT • Dev L0 — Leaderboard (Mock MVP)</title>
+<style>
+  :root{
+    --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+    --panel:#0f1621; --line:#223249;
+    --good:#5ee1a2; --bad:#ff6b6b; --warn:#5db7ff;
+    --btn:#101828; --ring:#6be9cd;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+       font:15px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,Roboto,Arial}
+  header{position:sticky;top:0;z-index:5;padding:.75rem 1rem;background:rgba(11,15,20,.82);
+    backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid #17202b;display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
+  .brand{font-weight:800}
+  .chip{color:var(--muted)}
+  .hud{margin-left:auto;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .pill{padding:.25rem .6rem;border:1px solid #243246;border-radius:999px;color:var(--muted);font-size:.86rem}
+  .pill strong{color:var(--ink)}
+
+  main{max-width:980px;margin:0 auto;padding:1rem .9rem 4rem;display:grid;gap:1rem}
+  .panel{background:linear-gradient(180deg,#192334,#131c29);border:1px solid var(--line);
+    border-radius:16px;box-shadow:0 20px 48px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03)}
+  .pad{padding:1rem}
+
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .btn{appearance:none;border:1px solid #243246;border-radius:12px;padding:.65rem .9rem;background:var(--btn);color:var(--ink);font-weight:700;cursor:pointer}
+  .btn:focus{outline:2px solid var(--ring);outline-offset:2px}
+  .btn.primary{background:linear-gradient(180deg,#18B8C7,#0EA0AC);border-color:#0b7e89}
+  .btn.success{background:linear-gradient(180deg,#3fcb96,#2aa673);border-color:#228a5f}
+  .btn.danger{background:linear-gradient(180deg,#ff6b6b,#d64f4f);border-color:#a53a3a}
+
+  /* Leaderboard table */
+  table{width:100%;border-collapse:separate;border-spacing:0}
+  th,td{padding:.6rem .7rem;border-bottom:1px solid #233447}
+  th{color:#a8c0dd;text-align:left;font-weight:700}
+  tbody tr:last-child td{border-bottom:0}
+  .flag.good{color:var(--good)}
+  .flag.warn{color:var(--warn)}
+  .flag.bad{color:var(--bad)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+
+  /* Incoming card */
+  .card{display:grid;gap:.5rem;background:#0e1723;border:1px solid #233447;border-radius:14px;padding:.9rem}
+  .card .h{font-weight:800}
+  .big{font-size:1.1rem}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:.25rem .6rem;align-items:center}
+  .kv div:nth-child(odd){color:#9fb3cc}
+
+  /* Overlays */
+  .overlay{position:fixed;inset:0;background:rgba(6,8,12,.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:30}
+  .dialog{background:#0f1621;border:1px solid #253448;border-radius:16px;max-width:560px;width:92%;padding:1rem 1rem 1.1rem;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+  .dialog h3{margin:.1rem 0 .35rem}
+  .sub{color:var(--muted)}
+
+  /* Flash feedback */
+  .flashHUD{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    z-index:60; pointer-events:none; font-size:18vw; line-height:1; opacity:0;
+    transform:scale(.8); transition:opacity .12s ease, transform .18s ease;
+  }
+  .flashHUD.show{ opacity:1; transform:scale(1.0); }
+  .flashHUD.good{ color:#57d39d; text-shadow:0 12px 40px rgba(87,211,157,.35); }
+  .flashHUD.bad{  color:#ff6b6b; text-shadow:0 12px 40px rgba(255,107,107,.35); }
+
+  /* Mobile layout: leaderboard first, then card/actions */
+  .grid{display:grid;gap:1rem}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🧩 CGT • Dev L0 — Leaderboard (Mock MVP)</div>
+  <span class="chip">Rank Router • Time-boxed blocks • Idempotent upserts</span>
+  <div class="hud">
+    <div class="pill"><small>Block</small> <strong id="blkIdx">1</strong>/3</div>
+    <div class="pill"><small>Time left</small> <strong id="timeLeft">—</strong></div>
+    <div class="pill"><small>Score</small> <strong id="score">0</strong></div>
+    <div class="pill"><small>Streak</small> <strong id="streak">0</strong></div>
+  </div>
+</header>
+
+<main>
+  <!-- Top: Leaderboard -->
+  <section class="panel pad">
+    <h3 style="margin:.1rem 0 .6rem">Live Leaderboard (Top 5)</h3>
+    <table id="lb">
+      <thead>
+        <tr><th>#</th><th>Wallet</th><th>Score</th><th>Submitted</th><th>Flag</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- Bottom: Incoming + actions + footer controls -->
+  <section class="panel pad grid">
+    <div class="card" id="incomingCard">
+      <div class="h big">Incoming submission</div>
+      <div class="kv">
+        <div>ID</div><div class="mono" id="cId">—</div>
+        <div>Wallet</div><div class="mono" id="cWallet">—</div>
+        <div>Score</div><div class="mono" id="cScore">—</div>
+        <div>Submitted</div><div class="mono" id="cTime">—</div>
+        <div>Block</div><div class="mono" id="cBlock">—</div>
+      </div>
+    </div>
+
+    <div class="row" style="justify-content:center">
+      <button class="btn success" id="btnAccept">✓ Add to current block</button>
+      <button class="btn danger" id="btnReject">✕ Reject</button>
+    </div>
+
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap">
+      <div class="row" style="gap:.4rem">
+        <button class="btn" id="musicBtn">Music: On</button>
+        <button class="btn" id="sfxBtn">SFX: On</button>
+      </div>
+      <div class="row" style="gap:.4rem">
+        <button class="btn" id="restartBtn">↻ Restart</button>
+        <button class="btn" id="exportBtn">📤 Export run</button>
+      </div>
+    </div>
+
+    <p class="sub" style="margin:.2rem 0 0">Tip: wallets are shortened like <span class="mono">abcd…xyz</span>. Only add entries that match the **current block**.</p>
+  </section>
+</main>
+
+<!-- Intro / Difficulty -->
+<div class="overlay" id="diffOv">
+  <div class="dialog">
+    <h3>Dev L0 — Leaderboard (Mock MVP)</h3>
+    <p class="sub" style="margin:.3rem 0 .6rem">
+      You’ve been transported into the CGT Leaderboard code.<br/>
+      Think like a Core Developer to add or reject submissions and keep player leaderboards clean.
+    </p>
+    <div class="sub" style="margin:.2rem 0 .8rem">Choose difficulty:</div>
+    <div class="row" style="gap:.6rem;flex-wrap:wrap">
+      <button class="btn primary" data-diff="practice">🟢 Practice</button>
+      <button class="btn primary" data-diff="standard">🟡 Standard</button>
+      <button class="btn primary" data-diff="pro">🔴 Pro</button>
+    </div>
+  </div>
+</div>
+
+<!-- Block parameters -->
+<div class="overlay" id="paramOv">
+  <div class="dialog">
+    <h3>Block parameters</h3>
+    <div id="paramBody" class="sub">—</div>
+    <div style="height:.5rem"></div>
+    <div class="sub" style="font-weight:700;margin:.2rem 0 .4rem">Instructions</div>
+    <div class="sub" id="instrLines" style="line-height:1.55">
+      👀 Check GQT ID<br/>
+      👀 Check Score Range<br/>
+      👀 Check Block Time<br/>
+      <div style="margin-top:.3rem">🌟 Bonus: reject submissions that fail checks</div>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:.6rem">
+      <button class="btn primary" id="startBlockBtn">Start block</button>
+      <button class="btn" id="cancelParamBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- End of run -->
+<div class="overlay" id="endOv">
+  <div class="dialog">
+    <h3 id="endTitle">Run complete</h3>
+    <div id="endBody" class="sub">—</div>
+    <div class="row" style="justify-content:center;margin-top:.6rem">
+      <button class="btn primary" id="againBtn">Play again</button>
+      <button class="btn" id="endCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- BGM -->
+<audio id="bgm" preload="auto" loop
+  src="https://raw.githubusercontent.com/cryptogamingtoken/cgt-games/main/sandbox/assets/Xdeviruchi%20-%208-Bit%20Fantasy%20Adventure%20Music%20(64%20KBps).mp3"></audio>
+
+<script>
+/* ================== Config ================== */
+const BLOCKS_PER_RUN = 3;
+const LB_SIZE = 5;
+const BLOCK_WINDOW_HOURS = 4;   // 4h window
+const MAX_CARDS_PER_BLOCK = 30;
+
+const DIFF = {
+  practice: { switchMs: 2600, correctIn6: 4, gqt: 'far', score: 'far', time: '5-8h' },
+  standard: { switchMs: 1800, correctIn6: 3, gqt: 'same-len-far', score: 'same-len-far', time: '±1h' },
+  pro:      { switchMs: 1100, correctIn6: 2, gqt: 'same-len-near', score: 'same-len-near', time: '±minutes' }
+};
+
+/* ================== State ================== */
+let difficulty = 'standard';
+let blockIndex = 0;
+let blockParams = null; // {gqtId, minScore, maxScore, start, end}
+let deck = []; // incoming cards queue
+let current = null;
+let nextTimer = null;
+let timeLeftTimer = null;
+
+let sfxOn = true, musicOn = true;
+let score = 0, streak = 0;
+
+const runLog = [];
+const lbRows = []; // accepted rows
+
+/* ================== DOM ================== */
+const diffOv = document.getElementById('diffOv');
+const paramOv = document.getElementById('paramOv');
+const endOv = document.getElementById('endOv');
+const paramBody = document.getElementById('paramBody');
+
+const blkIdxEl = document.getElementById('blkIdx');
+const timeLeftEl = document.getElementById('timeLeft');
+const scoreEl = document.getElementById('score');
+const streakEl = document.getElementById('streak');
+const lbBody = document.querySelector('#lb tbody');
+
+const cId = document.getElementById('cId');
+const cWallet = document.getElementById('cWallet');
+const cScore = document.getElementById('cScore');
+const cTime = document.getElementById('cTime');
+const cBlock = document.getElementById('cBlock');
+
+document.querySelectorAll('[data-diff]').forEach(b=>b.addEventListener('click',()=>{
+  difficulty = b.dataset.diff;
+  hide(diffOv);
+  startBlockSetup();
+}));
+
+document.getElementById('startBlockBtn').addEventListener('click', ()=>{
+  hide(paramOv);
+  startBlock();
+});
+document.getElementById('cancelParamBtn').addEventListener('click', ()=>{ show(diffOv); });
+
+document.getElementById('btnAccept').addEventListener('click', onAccept);
+document.getElementById('btnReject').addEventListener('click', onReject);
+
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  stopAllTimers();
+  show(diffOv);
+});
+document.getElementById('exportBtn').addEventListener('click', exportRun);
+
+document.getElementById('againBtn').addEventListener('click', ()=>{
+  hide(endOv); show(diffOv);
+});
+document.getElementById('endCloseBtn').addEventListener('click', ()=> hide(endOv));
+
+const musicBtn = document.getElementById('musicBtn');
+const sfxBtn = document.getElementById('sfxBtn');
+const bgm = document.getElementById('bgm');
+musicBtn.onclick = ()=>{ musicOn=!musicOn; musicBtn.textContent=`Music: ${musicOn?'On':'Off'}`; if(musicOn){bgm.volume=.35; bgm.play().catch(()=>{});} else bgm.pause(); };
+sfxBtn.onclick = ()=>{ sfxOn=!sfxOn; sfxBtn.textContent=`SFX: ${sfxOn?'On':'Off'}`; };
+
+document.addEventListener('pointerdown', ()=>{ try{ bgm.volume=.35; if(musicOn) bgm.play().catch(()=>{}); }catch{} }, {once:true,passive:true});
+
+/* ================== Utils ================== */
+const pad2 = n => String(n).padStart(2,'0');
+function fmtClock(d){ return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; }
+function boldNums(s){ return s.replace(/(\d[\d:–\-\s]*)/g,'<b class="mono" style="font-weight:800;color:#fff">${'$1'}</b>'); }
+function fmtWalletShort(w){ return w.slice(0,4)+'…'+w.slice(-3); }
+function show(el){ el.style.display='flex'; }
+function hide(el){ el.style.display='none'; }
+function rnd(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function sample(arr,n){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a.slice(0,n); }
+function now(){ return new Date(); }
+
+/* ================== Audio (SFX) ================== */
+let ctx;
+function ensureCtx(){ if(!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); }
+function flash(emoji,kind='good'){
+  const d=document.createElement('div');
+  d.className='flashHUD '+(kind==='good'?'good':'bad');
+  d.textContent=emoji; document.body.appendChild(d);
+  requestAnimationFrame(()=>d.classList.add('show'));
+  setTimeout(()=>{ d.style.opacity='0'; d.style.transform='scale(1.1)'; }, 420);
+  setTimeout(()=>d.remove(), 720);
+}
+function cheerSfx(){ if(!sfxOn) return; ensureCtx(); const f=[660,825,990], t=ctx.currentTime;
+  f.forEach((x,i)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type='square'; o.frequency.value=x;
+    g.gain.setValueAtTime(0.0,t+i*0.02); g.gain.linearRampToValueAtTime(0.06,t+i*0.02+0.03); g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.02+0.2);
+    o.connect(g); g.connect(ctx.destination); o.start(t+i*0.02); o.stop(t+i*0.02+0.2);});
+}
+function ghostSfx(){ if(!sfxOn) return; ensureCtx(); const o=ctx.createOscillator(), g=ctx.createGain(); const t=ctx.currentTime;
+  o.type='sawtooth'; o.frequency.setValueAtTime(880,t); o.frequency.exponentialRampToValueAtTime(180,t+0.35);
+  g.gain.setValueAtTime(0.08,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.4);
+  o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.42);
+  const dur=.25, nb=ctx.createBuffer(1, ctx.sampleRate*dur, ctx.sampleRate), ch=nb.getChannelData(0);
+  for(let i=0;i<ch.length;i++) ch[i]=(Math.random()*2-1)*(1-i/ch.length);
+  const src=ctx.createBufferSource(); src.buffer=nb; const ng=ctx.createGain(); ng.gain.value=0.05; src.connect(ng); ng.connect(ctx.destination); src.start(t+.1);
+}
+
+/* ================== Block setup ================== */
+function startBlockSetup(){
+  if(blockIndex>=BLOCKS_PER_RUN){ return endRun(); }
+  // params
+  const gqt = `GQT-${rnd(10000,99999)}`;
+  const minScore = rnd(500,800);
+  const maxScore = minScore + rnd(120,360);
+  const start = new Date(); const end = new Date(start.getTime() + BLOCK_WINDOW_HOURS*3600*1000);
+
+  blockParams = { gqt, minScore, maxScore, start, end };
+  // UI
+  blkIdxEl.textContent = String(blockIndex+1);
+  const body = `
+    <div class="kv" style="display:grid;grid-template-columns:130px 1fr;gap:.25rem .6rem;margin-top:.2rem">
+      <div>Block</div><div class="mono"><b>${blockIndex+1}</b>/<b>${BLOCKS_PER_RUN}</b></div>
+      <div>GQT ID</div><div class="mono">GQT-<b style="font-weight:800">${gqt.split('-')[1]}</b></div>
+      <div>Score range</div><div class="mono"><b>${minScore}</b> – <b>${maxScore}</b></div>
+      <div>Window</div><div class="mono"><b>${fmtClock(start)}</b> → <b>${fmtClock(end)}</b> (4h)</div>
+    </div>`;
+  paramBody.innerHTML = body;
+  show(paramOv);
+}
+
+function startBlock(){
+  // reset per-block
+  lbRows.length = 0;
+  lbBody.innerHTML='';
+  deck = buildDeck(blockParams, difficulty, MAX_CARDS_PER_BLOCK);
+  score = score; // keep cumulative
+  streak = 0;
+  tickTimeLeft();
+  nextCard();
+}
+
+/* ================== Deck generation ================== */
+function buildDeck(p, diffKey, maxN){
+  const cfg = DIFF[diffKey];
+  const cards = [];
+  const N = Math.min(maxN, 30);
+  // base timestamps within/around window
+  function randomTimeWithin(){ return new Date(p.start.getTime() + Math.random()*(p.end-p.start)); }
+  function timeOutside(kind){
+    if(diffKey==='practice') { // 5-8h off
+      const hrs = rnd(5,8)* (Math.random()<.5?-1:1);
+      return new Date(randomTimeWithin().getTime() + hrs*3600*1000);
+    } else if(diffKey==='standard') {
+      const hrs = (Math.random()<.5?-1:1)*1;
+      return new Date(randomTimeWithin().getTime() + hrs*3600*1000);
+    } else { // pro: minutes
+      const mins = (Math.random()<.5?-1:1)*rnd(2,7);
+      return new Date(randomTimeWithin().getTime() + mins*60*1000);
+    }
+  }
+
+  function mkWallet(){ // 44-charish Solana-like; we’ll shorten in UI
+    const chars="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    let s=""; for(let i=0;i<44;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+    return s;
+  }
+
+  function mkId(){ return `e${Math.random().toString(36).slice(2,6)}`; }
+
+  function correct(){
+    return {
+      id: mkId(),
+      wallet: mkWallet(),
+      score: rnd(p.minScore, p.maxScore),
+      submittedAt: randomTimeWithin(),
+      gqtId: p.gqt,
+      reason: 'ok'
+    };
+  }
+
+  // incorrect variants
+  function wrongGqt(){
+    let gqt;
+    if(diffKey==='practice'){ gqt = `GQT-${rnd(100000,999999)}`; }
+    else if(diffKey==='standard'){ gqt = `GQT-${rnd(10000,99999)}`; if(gqt===p.gqt) gqt=`GQT-${rnd(10000,99999)}`; }
+    else { // pro: one digit off
+      const n = p.gqt.split('-')[1].split('');
+      const i = rnd(0,n.length-1); n[i] = String((Number(n[i]||0)+1)%10);
+      gqt = `GQT-${n.join('')}`;
+    }
+    return { ...correct(), gqtId:gqt, reason:'wrong-gqt' };
+  }
+  function spoofScore(){
+    let s;
+    if(diffKey==='practice'){ s = rnd(p.maxScore+200, p.maxScore+3000); }
+    else if(diffKey==='standard'){ s = rnd(p.maxScore+50, p.maxScore+400); }
+    else { s = p.maxScore + rnd(5,35); }
+    return { ...correct(), score:s, reason:'spoof-score' };
+  }
+  function wrongBlock(){
+    return { ...correct(), submittedAt: timeOutside(), reason:'wrong-block' };
+  }
+  function duplicateFrom(base){ return { ...base, id: mkId(), reason:'duplicate' }; }
+
+  // mix according to difficulty rules; keep plenty of cards
+  const perSix = (diffKey==='practice')? {ok:4,bad:2}
+                : (diffKey==='standard')? {ok:3,bad:3}
+                : {ok:2,bad:4};
+
+  const badMakers = diffKey==='pro'
+    ? [wrongGqt, spoofScore, wrongBlock, ()=> (Math.random()<.5?wrongGqt():spoofScore())]
+    : [wrongGqt, spoofScore, wrongBlock];
+
+  while(cards.length < N){
+    const batch = [];
+    for(let i=0;i<perSix.ok;i++) batch.push(correct());
+    for(let i=0;i<perSix.bad;i++) batch.push(badMakers[rnd(0,badMakers.length-1)]());
+    // sometimes add a duplicate of a random prior OK
+    if(Math.random()<0.18 && batch.some(b=>b.reason==='ok')){
+      const base = sample(batch.filter(b=>b.reason==='ok'),1)[0];
+      batch.push(duplicateFrom(base));
+    }
+    cards.push(...sample(batch, batch.length));
+  }
+  return cards.slice(0,N);
+}
+
+/* ================== Flow ================== */
+function tickTimeLeft(){
+  stopTimer(timeLeftTimer);
+  timeLeftTimer = setInterval(()=>{
+    const ms = blockParams.end - now();
+    const s = Math.max(0, Math.floor(ms/1000));
+    timeLeftEl.textContent = `${s}s`;
+    if(s<=0) finishBlock('time');
+  }, 250);
+}
+
+function nextCard(){
+  stopTimer(nextTimer);
+  if(lbRows.length >= LB_SIZE){ return finishBlock('filled'); }
+  if(deck.length===0){ return finishBlock('deck-empty'); }
+  current = deck.shift();
+  paintCard(current);
+  nextTimer = setTimeout(()=>{ // auto-advance like a live stream
+    // treat as missed; just move on, no score change
+    nextCard();
+  }, DIFF[difficulty].switchMs);
+}
+
+function finishBlock(reason){
+  stopAllTimers();
+  // summarize block
+  const okAdds = lbRows.filter(r=>r.flag==='ok').length;
+  const badAdds = lbRows.length - okAdds;
+  runLog.push({ block:blockIndex+1, reason, accepted:lbRows.length, okAdds, badAdds, scoreAt:score, ts:new Date().toISOString() });
+
+  blockIndex++;
+  if(blockIndex >= BLOCKS_PER_RUN){
+    return endRun();
+  }
+  // move to next block setup
+  startBlockSetup();
+}
+
+function endRun(){
+  stopAllTimers();
+  const totalOk = runLog.reduce((a,r)=>a+(r.okAdds||0),0);
+  const totalBad = runLog.reduce((a,r)=>a+(r.badAdds||0),0);
+  const grade = score>=25 ? '⭐️⭐️⭐️ Core Developer'
+              : score>=15 ? '⭐️⭐️ Average Developer'
+                          : '⭐️ Sloppy Developer';
+  document.getElementById('endTitle').textContent = 'Run complete';
+  document.getElementById('endBody').innerHTML =
+    `Grade: <b>${grade}</b><br/>Score: <b>${score}</b> • Correct adds: <b>${totalOk}</b> • Bad adds: <b>${totalBad}</b><br/>Blocks: <b>${BLOCKS_PER_RUN}</b>`;
+  show(endOv);
+}
+
+/* ================== UI helpers ================== */
+function paintCard(c){
+  cId.textContent = c.id;
+  cWallet.textContent = fmtWalletShort(c.wallet);
+  cScore.textContent = String(c.score);
+  cTime.textContent = fmtClock(c.submittedAt);
+  const b = `${fmtClock(blockParams.start)} → ${fmtClock(blockParams.end)} (GQT ${blockParams.gqt})`;
+  cBlock.textContent = b;
+}
+
+function addLbRow(c, flag){
+  const tr = document.createElement('tr');
+  const idx = Math.min(lbRows.length+1, LB_SIZE);
+  const flagClass = flag==='ok' ? 'good' : (flag==='wrong-block' ? 'warn' : 'bad');
+  const flagIcon = flag==='ok' ? '✅' : (flag==='wrong-block' ? '🔵' : '🔴');
+  const td = (t)=>{ const el=document.createElement('td'); el.innerHTML=t; return el; };
+  tr.appendChild(td(String(idx)));
+  tr.appendChild(td(`<span class="mono">${fmtWalletShort(c.wallet)}</span>`));
+  tr.appendChild(td(`<span class="mono">${c.score}</span>`));
+  tr.appendChild(td(`<span class="mono">${fmtClock(c.submittedAt)}</span>`));
+  tr.appendChild(td(`<span class="flag ${flagClass}">${flagIcon} ${flag}</span>`));
+  lbBody.appendChild(tr);
+  lbRows.push({wallet:c.wallet, score:c.score, submittedAt:c.submittedAt, flag});
+}
+
+/* ================== Validation ================== */
+function isWithinWindow(d){ return d>=blockParams.start && d<=blockParams.end; }
+function isScoreInRange(s){ return s>=blockParams.minScore && s<=blockParams.maxScore; }
+function isGqtOk(id){ return id===blockParams.gqt; }
+function isDuplicate(c){ return lbRows.some(r=> r.wallet===c.wallet && r.score===c.score ); }
+function cardFlag(c){
+  if(!isGqtOk(c.gqtId)) return 'wrong-gqt';
+  if(!isScoreInRange(c.score)) return 'spoof-score';
+  if(!isWithinWindow(c.submittedAt)) return 'wrong-block';
+  if(isDuplicate(c)) return 'duplicate';
+  return 'ok';
+}
+
+/* ================== Actions ================== */
+function onAccept(){
+  if(!current) return;
+  const flag = cardFlag(current);
+  addLbRow(current, flag);
+  // scoring: only correct adds give +1; wrong add -1 and reset streak
+  if(flag==='ok'){ score+=1; streak++; }
+  else { score = Math.max(0, score-1); streak=0; }
+  updateHud();
+  nextCard();
+}
+function onReject(){
+  if(!current) return;
+  const isBad = cardFlag(current) !== 'ok';
+  // scoring + feedback only on reject
+  if(isBad){ score+=1; streak++; cheerSfx(); flash('🏆','good'); }
+  else { score=Math.max(0,score-1); streak=0; ghostSfx(); flash('👻','bad'); }
+  updateHud();
+  nextCard();
+}
+function updateHud(){ scoreEl.textContent=String(score); streakEl.textContent=String(streak); }
+
+/* ================== Timers ================== */
+function stopTimer(t){ if(t){ clearInterval(t); clearTimeout(t); } }
+function stopAllTimers(){ stopTimer(nextTimer); stopTimer(timeLeftTimer); }
+
+/* ================== Export ================== */
+function exportRun(){
+  const payload = {
+    game:"Dev L0 — Leaderboard (Mock MVP)",
+    difficulty,
+    block_window_hours: BLOCK_WINDOW_HOURS,
+    lb_size: LB_SIZE,
+    blocks_per_run: BLOCKS_PER_RUN,
+    runLog,
+    accepted: lbRows.length,
+    score, streak, timestamp:new Date().toISOString()
+  };
+  const text = JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(text).then(()=>toast("Run exported to clipboard ✅")).catch(()=>{console.log(text);toast("Copy failed. See console.");});
+}
+function toast(msg){
+  const t=document.createElement('div');
+  t.style.position='fixed'; t.style.left='50%'; t.style.bottom='18px';
+  t.style.transform='translateX(-50%)'; t.style.background='#101722';
+  t.style.border='1px solid #263448'; t.style.borderRadius='10px';
+  t.style.padding='.55rem .75rem'; t.style.zIndex='99'; t.style.color='var(--ink)';
+  t.style.boxShadow='0 10px 24px rgba(0,0,0,.35)';
+  t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),1500);
+}
+
+/* ================== Boot ================== */
+show(diffOv);
+</script>
+</body>
+</html>
