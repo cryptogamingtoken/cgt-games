@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT • Stakeholder Affordance Trainer (L0 vs L1)</title>
+<style>
+  :root{
+    --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+    --panel:#111a27; --card:#162233; --line:#243246;
+    --l0:#2774d0; --l1:#d048b6; --good:#5ee1a2; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+       font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;display:flex;flex-direction:column}
+  header{padding:1rem .9rem;background:var(--panel);border-bottom:1px solid #0e1520;text-align:center;font-weight:800}
+  main{flex:1;display:grid;place-items:center;padding:1rem}
+  .card{max-width:720px;width:min(92vw,720px);background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:1rem;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+  h1{font-size:1.15rem;margin:.2rem 0 .6rem;text-align:center}
+  .meta{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-bottom:.6rem}
+  .pill{padding:.25rem .55rem;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:.9rem}
+  .aff{font-size:1.25rem;font-weight:800;text-align:center;margin:.25rem 0 .7rem}
+  .btns{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center}
+  .btn{appearance:none;border:1px solid var(--line);border-radius:12px;padding:.7rem 1.1rem;font-weight:800;cursor:pointer}
+  .btn.l0{background:var(--l0);color:#fff}
+  .btn.l1{background:var(--l1);color:#fff}
+  .btn:active{transform:translateY(1px)}
+  .result{text-align:center;margin:.7rem 0 .2rem;min-height:1.4em}
+  .hud{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;color:var(--muted);font-size:.92rem;margin-top:.3rem}
+  .good{color:var(--good)} .bad{color:var(--bad)}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:50;padding:1rem}
+  .dialog{background:#132031;border:1px solid var(--line);border-radius:14px;max-width:560px;width:92%;padding:1rem 1.1rem}
+  .dialog h2{margin:.2rem 0 .6rem;text-align:center}
+  .center{text-align:center}
+  .small{font-size:.92rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>🧩 CGT • Stakeholder Affordance Trainer (L0 vs L1)</header>
+<main>
+  <section class="card">
+    <h1 id="stakeTitle">Loading…</h1>
+    <div class="meta">
+      <span class="pill" id="progress">—</span>
+      <span class="pill">Score: <b id="score">0</b></span>
+      <span class="pill">Streak: <b id="streak">0</b></span>
+      <span class="pill">Remaining: <b id="remain">—</b></span>
+    </div>
+    <div id="aff" class="aff">—</div>
+    <div class="btns">
+      <button class="btn l0" id="btnL0">Level 0</button>
+      <button class="btn l1" id="btnL1">Level 1</button>
+    </div>
+    <div id="result" class="result"></div>
+    <div class="hud" id="hud">Tip: press <b>0</b> for L0, <b>1</b> for L1</div>
+  </section>
+</main>
+
+<!-- Final overlay -->
+<div id="finalOv" class="overlay">
+  <div class="dialog">
+    <h2 id="finalTitle">—</h2>
+    <p id="finalScore" class="center">—</p>
+    <p id="finalBreakdown" class="center small">—</p>
+    <div class="center" style="margin-top:.6rem">
+      <button class="btn l0" id="againBtn">↻ Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================== DATA (from your matrices) ================== */
+const L0 = {
+  Founders: [
+    "Platform custodianship",
+    "Roadmap control",
+    "Protocol definition authority"
+  ],
+  "Core Developers": [
+    "Build MVP backend",
+    "Build MVP frontend",
+    "Implement leaderboard (mock)",
+    "Implement claims (mock)",
+    "Explorer (read-only)",
+    "Wallet flow (mock)",
+    "Publish protocol schema draft"
+  ],
+  "Marketing & Operations": [
+    "Website publishing",
+    "Whitepaper comms",
+    "Community touchpoints (Telegram, CMC)"
+  ],
+  Players: [
+    "Enter main game",
+    "Receive scores",
+    "Claim mock rewards",
+    "Appear in explorer"
+  ],
+  "3rd-Party GQT Creators": [
+    "Protocol documentation available; may design around config (no publish)"
+  ],
+  "Reward Pool Organisers": [
+    "View mock tournament/claim logic",
+    "Simulate fees (no routing)"
+  ],
+  Stakers: [
+    "No action at MVP; staking mechanics not live"
+  ],
+  "Ecosystem Builders": [
+    "See structure of GQT/score claims; architect future layers"
+  ],
+  "CGT Service Providers": [
+    "Identify integration & monitoring opportunities"
+  ],
+  "DAO / Sub-DAOs": [
+    "No governance; passive observation only"
+  ]
+};
+
+const L1 = {
+  Founders: [
+    "Finalize GQT scaffolding",
+    "Finalize core schema",
+    "Finalize narrative shape",
+    "Lead mock protocol specification"
+  ],
+  "Core Developers": [
+    "Build mock main game flow",
+    "Simulate leaderboard ranking logic",
+    "Implement score submission logic",
+    "Create session-based token gating logic",
+    "Simulate off-chain reward distribution",
+    "Link leaderboard to mock claim system"
+  ],
+  "Marketing & Operations": [
+    "Publish guides",
+    "Publish mock API demos",
+    "Publish early reward pool simulation breakdowns",
+    "Share structure via X and documentation"
+  ],
+  Players: [
+    "Engage with simulated GQT experiences",
+    "Access token-gated mock GQTs",
+    "Claim rewards from sandbox leaderboards",
+    "Receive draft GQTs from creators",
+    "Follow protocol walkthroughs and guides"
+  ],
+  "3rd-Party GQT Creators": [
+    "Build GQTs in sandboxed/shareable draft mode",
+    "Share externally (no CGT listing)"
+  ],
+  "Reward Pool Organisers": [
+    "Simulate prize logic using config schema",
+    "Explore routing options",
+    "Explore fee logic",
+    "Explore mock reward splits"
+  ],
+  Stakers: [
+    "Monitor staking mechanics in theory"
+  ],
+  "Ecosystem Builders": [
+    "Build overlays & dashboards with mock data",
+    "Build testnet tools aligned to evolving schemas"
+  ],
+  "CGT Service Providers": [
+    "Interpret protocol drafts through a service lens",
+    "Support creators by explaining/summarizing steps"
+  ],
+  "DAO / Sub-DAOs": [
+    "Passive schema monitoring; awaiting readiness before DAO ladder"
+  ]
+};
+
+/* Build a flat deck: {stakeholder, level, aff} */
+const deckAll = [];
+Object.entries(L0).forEach(([s, list]) => list.forEach(a => deckAll.push({stakeholder:s, level:"L0", aff:a})));
+Object.entries(L1).forEach(([s, list]) => list.forEach(a => deckAll.push({stakeholder:s, level:"L1", aff:a})));
+
+/* ================== GAME LOGIC ================== */
+let cards = [];
+let current = null;
+let score = 0, answered = 0, streak = 0;
+
+const stakeTitle = document.getElementById('stakeTitle');
+const affEl = document.getElementById('aff');
+const resultEl = document.getElementById('result');
+const scoreEl = document.getElementById('score');
+const streakEl = document.getElementById('streak');
+const remainEl = document.getElementById('remain');
+const progressEl = document.getElementById('progress');
+const finalOv = document.getElementById('finalOv');
+const finalTitle = document.getElementById('finalTitle');
+const finalScore = document.getElementById('finalScore');
+const finalBreakdown = document.getElementById('finalBreakdown');
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function start(){
+  // fresh shuffled deck every run
+  cards = shuffle(deckAll.slice());
+  score = 0; answered = 0; streak = 0;
+  nextCard();
+}
+
+function nextCard(){
+  if(cards.length===0){ return endGame(); }
+  current = cards.pop();
+  stakeTitle.textContent = `Stakeholder: ${current.stakeholder}`;
+  affEl.textContent = current.aff;
+  resultEl.textContent = '';
+  updateHUD();
+}
+
+function guess(level){
+  answered++;
+  const ok = (level === current.level);
+  if(ok){ score++; streak++; resultEl.innerHTML = `<span class="good">✅ Correct — ${current.level}</span>`; }
+  else  { streak = 0; resultEl.innerHTML = `<span class="bad">❌ Wrong — it was ${current.level}</span>`; }
+  updateHUD();
+  setTimeout(nextCard, 900);
+}
+
+function updateHUD(){
+  scoreEl.textContent = String(score);
+  streakEl.textContent = String(streak);
+  remainEl.textContent = String(cards.length);
+  progressEl.textContent = `Answered: ${answered} / Total: ${answered + cards.length}`;
+}
+
+function endGame(){
+  const pct = answered ? Math.round((score/answered)*100) : 0;
+  let title = "Average 🥸";
+  if(pct < 60) title = "Sloppy 🤤";
+  else if(pct >= 80) title = "Dream 😇";
+  finalTitle.textContent = title;
+  finalScore.textContent = `Final Score: ${score}/${answered} (${pct}%)`;
+  finalBreakdown.textContent = `You reviewed all stakeholders across L0/L1. Replay to reshuffle and reinforce memory.`;
+  finalOv.style.display = 'flex';
+}
+
+document.getElementById('btnL0').addEventListener('click', ()=>guess('L0'));
+document.getElementById('btnL1').addEventListener('click', ()=>guess('L1'));
+document.getElementById('againBtn').addEventListener('click', ()=>{ finalOv.style.display='none'; start(); });
+
+// keyboard shortcuts: 0 for L0, 1 for L1
+window.addEventListener('keydown', (e)=>{
+  if(e.key==='0') guess('L0');
+  if(e.key==='1') guess('L1');
+});
+
+start();
+</script>
+</body>
+</html>
