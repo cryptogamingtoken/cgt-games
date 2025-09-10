@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT • Stakeholder Builder (L0→L1)</title>
+<style>
+  :root{
+    --bg:#0b0f14; --ink:#eaf2ff; --muted:#9fb3cc;
+    --panel:#111a27; --card:#162233; --line:#243246;
+    --l0:#2774d0; --l1:#d048b6; --good:#5ee1a2; --bad:#ff6b6b; --accent:#6be9cd;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--ink);
+       font:16px/1.5 system-ui,-apple-system,Inter,Segoe UI,Roboto,Arial;display:flex;flex-direction:column}
+  header{padding:1rem .9rem;background:var(--panel);border-bottom:1px solid #0e1520;text-align:center;font-weight:800}
+  main{flex:1;display:grid;place-items:center;padding:1rem}
+  .shell{max-width:980px;width:min(96vw,980px);display:grid;gap:1rem}
+  .bar{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
+  .pill{padding:.3rem .6rem;border:1px solid var(--line);border-radius:999px;background:#0f1928;color:var(--muted);font-size:.92rem}
+  .wrap{display:grid;gap:1rem}
+  .cols{display:grid;gap:1rem}
+  @media(min-width:900px){ .cols{grid-template-columns:1.1fr .9fr} }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1rem;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+  h2{margin:.2rem 0 .6rem;font-size:1.1rem;text-align:center}
+  h3{margin:.2rem 0 .5rem;font-size:1rem}
+  .list{display:grid;gap:.35rem}
+  .row{display:flex;gap:.5rem;align-items:center}
+  .idx{min-width:1.6rem;height:1.6rem;border-radius:999px;display:inline-grid;place-items:center;
+       background:#102036;border:1px solid var(--line);color:#a9c0db;font-weight:800;font-size:.9rem}
+  .t{flex:1}
+  .empty{opacity:.5}
+  .hint{color:var(--muted);text-align:center;font-size:.92rem}
+  .options{display:grid;gap:.6rem}
+  @media(min-width:560px){ .options{grid-template-columns:1fr 1fr} }
+  @media(min-width:900px){ .options{grid-template-columns:1fr 1fr} }
+  .opt{appearance:none;width:100%;text-align:left;background:#0f1726;border:1px solid #22324a;border-radius:12px;
+       padding:.8rem .9rem;color:#eaf2ff;cursor:pointer;font-weight:700}
+  .opt:hover{border-color:#31527c}
+  .opt:active{transform:translateY(1px)}
+  .tag{display:inline-flex;gap:.35rem;align-items:center;padding:.25rem .5rem;border:1px solid var(--line);border-radius:999px;font-size:.8rem;color:#a9c0db}
+  .l0{background:linear-gradient(180deg,#2c7fdf,#215e9e);border-color:#1e4d82}
+  .l1{background:linear-gradient(180deg,#d05bc2,#a04795);border-color:#7f3575}
+  .good{color:var(--good)} .bad{color:var(--bad)}
+  .center{text-align:center}
+  /* Overlays */
+  .overlay{position:fixed;inset:0;background:rgba(4,7,12,.78);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50}
+  .dialog{background:#0f1828;border:1px solid var(--line);border-radius:14px;max-width:560px;width:92%;padding:1rem 1.1rem}
+  .dialog h1,.dialog h2{margin:.2rem 0 .6rem;text-align:center}
+  .btn{appearance:none;border:1px solid #2a3c55;border-radius:12px;padding:.7rem 1rem;background:#0f1724;color:#fff;font-weight:800;cursor:pointer}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:linear-gradient(180deg,#19b7c8,#0ea1ad);border-color:#0a8692}
+  .toast{position:fixed;left:50%;top:22%;transform:translateX(-50%);background:#101b2b;border:1px solid #2b3d57;border-radius:14px;
+         padding:1rem 1.1rem;color:#fff;z-index:60;box-shadow:0 18px 40px rgba(0,0,0,.45);display:none}
+  .toast h3{margin:0 0 .4rem;text-align:center}
+  .skull{font-size:3.2rem;text-align:center;line-height:1}
+</style>
+</head>
+<body>
+<header>🧩 CGT • Stakeholder Builder (Fill L0 then L1)</header>
+<main>
+  <div class="shell">
+    <div class="bar">
+      <span class="pill">Stakeholder <b id="sIdx">1</b>/<b id="sTotal">—</b></span>
+      <span class="pill">Correct: <b id="score">0</b></span>
+      <span class="pill">Mistakes: <b id="mist">0</b></span>
+      <span class="pill">Streak: <b id="streak">0</b></span>
+    </div>
+
+    <div class="wrap cols">
+      <!-- BUILT LISTS -->
+      <section class="card">
+        <h2 id="stakeName">—</h2>
+        <div class="row center" style="gap:.4rem;margin-bottom:.6rem">
+          <span class="tag">Fill <b>L0</b> first</span>
+          <span class="tag">Then <b>L1</b></span>
+        </div>
+        <div class="list" id="listL0"></div>
+        <div class="list" id="listL1" style="margin-top:.6rem"></div>
+      </section>
+
+      <!-- OPTIONS -->
+      <section class="card">
+        <h3 id="prompt" class="center">—</h3>
+        <div id="options" class="options"></div>
+        <div id="hint" class="hint" style="margin-top:.6rem">Tap an affordance card. Wrong picks don’t remove options.</div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- Stakeholder complete -->
+<div id="doneOverlay" class="overlay">
+  <div class="dialog">
+    <h2>Stakeholder complete</h2>
+    <p class="center" id="doneMsg">—</p>
+    <div class="center" style="margin-top:.6rem">
+      <button class="btn primary" id="nextStake">Next stakeholder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Final summary -->
+<div id="finalOverlay" class="overlay">
+  <div class="dialog">
+    <h1 id="finalTitle">—</h1>
+    <p class="center" id="finalStats">—</p>
+    <p class="center" style="color:var(--muted)">Replay to see a different stakeholder order.</p>
+    <div class="center" style="margin-top:.6rem">
+      <button class="btn primary" id="playAgain">↻ Play Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- Brutal Fail toast -->
+<div id="failToast" class="toast">
+  <div class="skull">💀</div>
+  <h3>Brutal Fail</h3>
+  <p class="center" style="margin:.2rem 0 .6rem;color:#a9c0db">That doesn’t belong in this step. Try again.</p>
+  <div class="center">
+    <button id="tryAgain" class="btn">Try Again</button>
+  </div>
+</div>
+
+<script>
+/* ===== Data (same affordances as before) ===== */
+const L0 = {
+  "Founders": [
+    "Platform custodianship",
+    "Roadmap control",
+    "Protocol definition authority"
+  ],
+  "Core Developers": [
+    "Build MVP backend",
+    "Build MVP frontend",
+    "Implement leaderboard (mock)",
+    "Implement claims (mock)",
+    "Explorer (read-only)",
+    "Wallet flow (mock)",
+    "Publish protocol schema draft"
+  ],
+  "Marketing & Operations": [
+    "Website publishing",
+    "Whitepaper comms",
+    "Community touchpoints (Telegram, CMC)"
+  ],
+  "Players": [
+    "Enter main game",
+    "Receive scores",
+    "Claim mock rewards",
+    "Appear in explorer"
+  ],
+  "3rd-Party GQT Creators": [
+    "Protocol documentation available; may design around the config (no publish)"
+  ],
+  "Reward Pool Organisers": [
+    "View mock tournament/claim logic",
+    "Simulate fees (no routing)"
+  ],
+  "Stakers": [
+    "No action at MVP; staking mechanics not live"
+  ],
+  "Ecosystem Builders": [
+    "See structure of GQT/score claims; architect future layers"
+  ],
+  "CGT Service Providers": [
+    "Identify integration & monitoring opportunities"
+  ],
+  "DAO / Sub-DAOs": [
+    "No governance; passive observation only"
+  ]
+};
+
+const L1 = {
+  "Founders": [
+    "Finalize GQT scaffolding",
+    "Finalize core schema",
+    "Finalize narrative shape",
+    "Lead mock protocol specification"
+  ],
+  "Core Developers": [
+    "Build mock main game flow",
+    "Simulate leaderboard ranking logic",
+    "Implement score submission logic",
+    "Create session-based token gating logic",
+    "Simulate off-chain reward distribution",
+    "Link leaderboard to mock claim system"
+  ],
+  "Marketing & Operations": [
+    "Publish guides",
+    "Publish mock API demos",
+    "Publish early reward pool simulation breakdowns",
+    "Share structure via X and documentation"
+  ],
+  "Players": [
+    "Engage with simulated GQT experiences",
+    "Access token-gated mock GQTs",
+    "Claim rewards from sandbox leaderboards",
+    "Receive draft GQTs from creators",
+    "Follow protocol walkthroughs and guides"
+  ],
+  "3rd-Party GQT Creators": [
+    "Build GQTs in sandboxed/shareable draft mode",
+    "Share externally (no CGT listing)"
+  ],
+  "Reward Pool Organisers": [
+    "Simulate prize logic using config schema",
+    "Explore routing options",
+    "Explore fee logic",
+    "Explore mock reward splits"
+  ],
+  "Stakers": [
+    "Monitor staking mechanics in theory"
+  ],
+  "Ecosystem Builders": [
+    "Build overlays & dashboards with mock data",
+    "Build testnet tools aligned to evolving schemas"
+  ],
+  "CGT Service Providers": [
+    "Interpret protocol drafts through a service lens",
+    "Support creators by explaining/summarizing steps"
+  ],
+  "DAO / Sub-DAOs": [
+    "Passive schema monitoring; awaiting readiness before DAO ladder"
+  ]
+};
+
+/* ===== Helpers ===== */
+const qs = id => document.getElementById(id);
+const sIdx = qs('sIdx'), sTotal = qs('sTotal');
+const stakeName = qs('stakeName');
+const listL0 = qs('listL0'), listL1 = qs('listL1');
+const optionsEl = qs('options');
+const promptEl = qs('prompt');
+const scoreEl = qs('score'), mistEl = qs('mist'), streakEl = qs('streak');
+const doneOverlay = qs('doneOverlay'), doneMsg = qs('doneMsg'), nextStakeBtn = qs('nextStake');
+const finalOverlay = qs('finalOverlay'), finalTitle = qs('finalTitle'), finalStats = qs('finalStats');
+const failToast = qs('failToast'), tryAgainBtn = qs('tryAgain');
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+
+/* ===== Game state ===== */
+let order = [];           // randomized stakeholders
+let idxStake = 0;         // current stakeholder index
+let curName = "";         // stakeholder name
+let neededL0 = [];        // remaining L0 items to place
+let neededL1 = [];        // remaining L1 items to place
+let builtL0 = [];         // placed L0
+let builtL1 = [];         // placed L1
+let pool = [];            // options pool (this stakeholder only)
+let score = 0, mistakes = 0, streak = 0;
+let totalPlaced = 0, totalNeeded = 0;
+
+/* ===== UI builders ===== */
+function renderLists(){
+  listL0.innerHTML = `<h3>Level 0</h3>` + (builtL0.concat(Array(Math.max(0,neededL0.length)).fill('')).map((t,i)=>{
+    const txt = builtL0[i] ?? '';
+    return `<div class="row"><span class="idx">${i+1}</span><div class="t ${txt?'':'empty'}">${txt||'—'}</div></div>`;
+  }).join(''));
+
+  listL1.innerHTML = `<h3>Level 1</h3>` + (builtL1.concat(Array(Math.max(0,neededL1.length)).fill('')).map((t,i)=>{
+    const txt = builtL1[i] ?? '';
+    return `<div class="row"><span class="idx">${i+1}</span><div class="t ${txt?'':'empty'}">${txt||'—'}</div></div>`;
+  }).join(''));
+}
+
+function renderOptions(){
+  optionsEl.innerHTML = '';
+  pool.forEach((text)=>{
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = text;
+    btn.onclick = ()=> choose(text);
+    optionsEl.appendChild(btn);
+  });
+  if(neededL0.length>0){
+    promptEl.innerHTML = `Pick a <b>Level 0</b> affordance for <b>${curName}</b>`;
+  } else if(neededL1.length>0){
+    promptEl.innerHTML = `Pick a <b>Level 1</b> affordance for <b>${curName}</b>`;
+  } else {
+    promptEl.textContent = 'All items placed.';
+  }
+}
+
+function updateHUD(){
+  sIdx.textContent = String(idxStake+1);
+  sTotal.textContent = String(order.length);
+  scoreEl.textContent = String(score);
+  mistEl.textContent = String(mistakes);
+  streakEl.textContent = String(streak);
+}
+
+/* ===== Flow ===== */
+function start(){
+  const names = Object.keys({...L0, ...L1});
+  order = shuffle(names.filter(n => (L0[n]?.length||0)+(L1[n]?.length||0) > 0));
+  idxStake = 0; score=0; mistakes=0; streak=0; totalPlaced=0;
+  totalNeeded = Object.keys(L0).reduce((sum,k)=>sum+(L0[k]?.length||0),0) +
+                Object.keys(L1).reduce((sum,k)=>sum+(L1[k]?.length||0),0);
+  nextStakeholder();
+}
+
+function nextStakeholder(){
+  if(idxStake >= order.length){ return finish(); }
+  curName = order[idxStake];
+  builtL0 = []; builtL1 = [];
+  neededL0 = (L0[curName] || []).slice();
+  neededL1 = (L1[curName] || []).slice();
+  // pool = all options for this stakeholder (no distractors), shuffled
+  pool = shuffle(neededL0.concat(neededL1));
+  stakeName.textContent = curName;
+  renderLists();
+  renderOptions();
+  updateHUD();
+}
+
+function choose(text){
+  const needPhase = neededL0.length>0 ? 'L0' : 'L1';
+  const ok = (needPhase==='L0' ? neededL0.includes(text) : neededL1.includes(text));
+  if(ok){
+    // remove from pool and add to built list
+    pool = pool.filter(t => t!==text);
+    if(needPhase==='L0'){
+      builtL0.push(text);
+      neededL0.splice(neededL0.indexOf(text),1);
+    }else{
+      builtL1.push(text);
+      neededL1.splice(neededL1.indexOf(text),1);
+    }
+    totalPlaced++; score++; streak++;
+    renderLists(); renderOptions(); updateHUD();
+    // if finished stakeholder
+    if(neededL0.length===0 && neededL1.length===0){
+      doneMsg.innerHTML = `<b>${curName}</b> completed • Placed: <b>${builtL0.length+builtL1.length}</b>`;
+      doneOverlay.style.display='flex';
+    }
+  } else {
+    // brutal fail toast
+    mistakes++; streak=0; updateHUD();
+    showFail();
+  }
+}
+
+/* ===== Feedback ===== */
+function showFail(){
+  failToast.style.display='block';
+  failToast.style.opacity='0';
+  requestAnimationFrame(()=>{
+    failToast.style.transition='opacity .15s ease, transform .15s ease';
+    failToast.style.opacity='1';
+  });
+}
+tryAgainBtn.onclick = ()=>{
+  // simply hide toast; options remain; user tries again
+  failToast.style.display='none';
+  failToast.style.opacity='0';
+};
+
+/* ===== Overlays wiring ===== */
+nextStakeBtn.onclick = ()=>{
+  doneOverlay.style.display='none';
+  idxStake++;
+  nextStakeholder();
+};
+
+function finish(){
+  const pct = Math.round((score/totalPlaced||0)*100);
+  let title = "Average Founder 🥸";
+  if(pct < 60) title = "Sloppy Founder 🤤";
+  else if(pct >= 80) title = "Dream Founder 😇";
+  finalTitle.textContent = title;
+  finalStats.textContent = `Correct: ${score} • Mistakes: ${mistakes} • Accuracy: ${isNaN(pct)?0:pct}%`;
+  finalOverlay.style.display='flex';
+}
+qs('playAgain').onclick = ()=>{ finalOverlay.style.display='none'; start(); };
+
+/* boot */
+start();
+</script>
+</body>
+</html>
