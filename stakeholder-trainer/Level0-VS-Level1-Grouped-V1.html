@@ -270,7 +270,7 @@ function renderLevel(container, canonical, built, title){
     canonical.map((_, i) => {
       const txt = placed[i];
       // left bubble shows canonical number; text shows (n) + label when placed
-      const label = txt ? `(${i+1}) ${txt}` : '—';
+      const label = txt || '—';
       return `
         <div class="row">
           <span class="idx">${i+1}</span>
