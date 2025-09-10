@@ -253,15 +253,30 @@ let totalPlaced = 0, totalNeeded = 0;
 
 /* ===== UI builders ===== */
 function renderLists(){
-  listL0.innerHTML = `<h3>Level 0</h3>` + (builtL0.concat(Array(Math.max(0,neededL0.length)).fill('')).map((t,i)=>{
-    const txt = builtL0[i] ?? '';
-    return `<div class="row"><span class="idx">${i+1}</span><div class="t ${txt?'':'empty'}">${txt||'—'}</div></div>`;
-  }).join(''));
+  renderLevel(listL0, (L0[curName] || []), builtL0, 'Level 0');
+  renderLevel(listL1, (L1[curName] || []), builtL1, 'Level 1');
+}
 
-  listL1.innerHTML = `<h3>Level 1</h3>` + (builtL1.concat(Array(Math.max(0,neededL1.length)).fill('')).map((t,i)=>{
-    const txt = builtL1[i] ?? '';
-    return `<div class="row"><span class="idx">${i+1}</span><div class="t ${txt?'':'empty'}">${txt||'—'}</div></div>`;
-  }).join(''));
+function renderLevel(container, canonical, built, title){
+  // Map placed items into their canonical slot
+  const placed = new Array(canonical.length).fill('');
+  built.forEach(item => {
+    const i = canonical.indexOf(item);
+    if (i > -1) placed[i] = item;
+  });
+
+  container.innerHTML =
+    `<h3>${title}</h3>` +
+    canonical.map((_, i) => {
+      const txt = placed[i];
+      // left bubble shows canonical number; text shows (n) + label when placed
+      const label = txt ? `(${i+1}) ${txt}` : '—';
+      return `
+        <div class="row">
+          <span class="idx">${i+1}</span>
+          <div class="t ${txt ? '' : 'empty'}">${label}</div>
+        </div>`;
+    }).join('');
 }
 
 function renderOptions(){
@@ -364,13 +379,16 @@ nextStakeBtn.onclick = ()=>{
 };
 
 function finish(){
-  const pct = Math.round((score/totalPlaced||0)*100);
+  const attempts = score + mistakes;           // every choice counted
+  const pct = attempts ? Math.round((score/attempts)*100) : 0;
+
   let title = "Average Founder 🥸";
-  if(pct < 60) title = "Sloppy Founder 🤤";
-  else if(pct >= 80) title = "Dream Founder 😇";
+  if (pct < 60) title = "Sloppy Founder 🤤";
+  else if (pct >= 80) title = "Dream Founder 😇";
+
   finalTitle.textContent = title;
-  finalStats.textContent = `Correct: ${score} • Mistakes: ${mistakes} • Accuracy: ${isNaN(pct)?0:pct}%`;
-  finalOverlay.style.display='flex';
+  finalStats.textContent = `Correct: ${score} • Mistakes: ${mistakes} • Accuracy: ${pct}%`;
+  finalOverlay.style.display = 'flex';
 }
 qs('playAgain').onclick = ()=>{ finalOverlay.style.display='none'; start(); };
 
