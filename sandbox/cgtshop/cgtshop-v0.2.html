@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT Shop — Immersive MVP</title>
+<style>
+  :root{--bg:#0b0f14;--surface:#0f1620;--ink:#e6edf3;--ink-dim:#9fb0c2;--line:#223041;--good:#7cf08a;--bad:#ff8a8a;--hint:#c8d6e5}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+  .wrap{max-width:720px;margin:0 auto;padding:20px}
+  header{display:flex;align-items:center;justify-content:space-between;margin:6px 0 12px}
+  .hud{display:flex;gap:12px}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px}
+  .k{opacity:.7;margin-right:6px}
+  .v{font-weight:700}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .title{font-size:18px;font-weight:700;margin:0 0 8px}
+  .sub{color:var(--ink-dim);margin:0 0 12px}
+  .hint{margin:12px 0 18px;padding:12px;border-left:4px solid #3a516a;background:#101a24;border-radius:8px;color:var(--hint)}
+  .slider{width:100%;margin:12px 0}
+  input[type="range"]{width:100%}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .btn{cursor:pointer;border:1px solid var(--line);background:#122034;color:var(--ink);padding:10px 14px;border-radius:10px}
+  .btn:hover{background:#162a43}
+  .choices{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+  .outcome{margin-top:12px;padding:14px;border-radius:10px}
+  .good{background:#0f1c14;border:1px solid #234333;color:var(--good)}
+  .bad{background:#1c0f10;border:1px solid #432326;color:var(--bad)}
+  .muted{opacity:.8}
+  .center{display:flex;justify-content:center;gap:10px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="pill"><span class="k">Day</span><span class="v" id="day">1</span></div>
+    <div class="hud">
+      <div class="pill"><span class="k">Market Cap</span><span class="v" id="mc">$10,000</span></div>
+      <!-- price is tracked internally; we don’t clutter UI with it -->
+    </div>
+  </header>
+
+  <div class="card" id="scene">
+    <p class="title" id="scenarioTitle">Loading scenario…</p>
+    <p class="sub" id="scenarioCopy"></p>
+
+    <div class="hint" id="forecast">No signals today.</div>
+
+    <div class="row">
+      <div>
+        <div class="k">Stake</div>
+        <div class="v" id="stakeLabel">$0 (0%)</div>
+      </div>
+      <div class="choices" id="quick">
+        <!-- filled with 0,25,50,75,100 buttons -->
+      </div>
+    </div>
+
+    <input class="slider" id="stake" type="range" min="0" max="100" step="1" value="0"/>
+
+    <div class="row">
+      <button class="btn" id="commit">Commit</button>
+      <div class="muted">Choose how hard to go in today.</div>
+    </div>
+
+    <div id="reveal" style="display:none;">
+      <div id="outcomeBox" class="outcome"></div>
+      <div class="center">
+        <button class="btn" id="next">Next day</button>
+        <button class="btn" id="restart" style="display:none;">Restart</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* --------- Core state --------- */
+const SUPPLY = 350_000_000; // used internally for price calc if needed
+let day = 1;
+let mc = 10_000; // starting bankroll / market cap
+function fmtUSD(n){ return '$' + Math.floor(n).toLocaleString(); }
+function price(){ return mc / SUPPLY; }
+
+/* --------- Seed scenario pool (swap with your 1000x-derived JSON later) --------- */
+/* Each scenario: copy, stakeholder, skew profile for outcomes */
+const scenarios = [
+  {
+    id:"mktg-buzz",
+    title:"Marketing Buzz – Influencer Thread",
+    copy:"A mid-tier influencer is keen to post a CGT thread today. If sentiment is hot, this could rip. If it falls flat, you’ll be overexposed.",
+    stakeholder:"Marketing",
+    // outcome percentage ranges (applied to staked portion) pick ONE bucket by weighted chance
+    outcomes:[
+      {label:"Flat day", range:[-0.05,0.05], weight:40},
+      {label:"Nice pop", range:[0.08,0.20], weight:40},
+      {label:"Backlash", range:[-0.25,-0.10], weight:15},
+      {label:"Viral surge", range:[0.30,0.60], weight:5}
+    ],
+    hints:["Community looks warm","No clear signals","Some skepticism brewing"]
+  },
+  {
+    id:"dev-release",
+    title:"Core Dev – Minor Release",
+    copy:"A small stability upgrade could reassure holders. Upside is modest, but it rarely backfires—unless a bug slips through.",
+    stakeholder:"Developers",
+    outcomes:[
+      {label:"Reassuring", range:[0.03,0.10], weight:55},
+      {label:"Neutral", range:[-0.02,0.03], weight:35},
+      {label:"Bug discovered", range:[-0.15,-0.07], weight:10}
+    ],
+    hints:["Infra feels solid","Code freeze jitters","No signals"]
+  },
+  {
+    id:"players-tournament",
+    title:"Players – Weekend Tournament Hype",
+    copy:"A community-organised GQT weekend may flood in new wallets—or fizzle if overlap with bigger events steals the thunder.",
+    stakeholder:"Players",
+    outcomes:[
+      {label:"Fizzle", range:[-0.12,-0.02], weight:35},
+      {label:"Steady interest", range:[0.04,0.12], weight:45},
+      {label:"Breakout", range:[0.20,0.45], weight:15},
+      {label:"Overshadowed", range:[-0.30,-0.18], weight:5}
+    ],
+    hints:["Noise rising","Competing event rumour","No signals"]
+  },
+  {
+    id:"reg-fog",
+    title:"Regulatory Fog – Rumour Mill",
+    copy:"Whispers of a sector-wide review. Could be nothing… or a sharp risk-off. High aggression today can be fatal.",
+    stakeholder:"Founders/Reg",
+    outcomes:[
+      {label:"False alarm", range:[0.00,0.08], weight:35},
+      {label:"Caution", range:[-0.08,0.00], weight:40},
+      {label:"Sharp sell", range:[-0.25,-0.12], weight:20},
+      {label:"Flash panic", range:[-0.60,-0.35], weight:5} // existential-style
+    ],
+    hints:["Regulatory fog ahead","Industry quiet","No signals"]
+  }
+];
+
+/* --------- Helpers --------- */
+function pickWeighted(arr){
+  const total = arr.reduce((s,o)=>s+o.weight,0);
+  let r = Math.random()*total;
+  for(const o of arr){ if((r-=o.weight)<=0) return o; }
+  return arr[0];
+}
+function rand(min,max){ return Math.random()*(max-min)+min; }
+function rndFrom(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+
+/* --------- UI elements --------- */
+const elDay = document.getElementById('day');
+const elMC = document.getElementById('mc');
+const elTitle = document.getElementById('scenarioTitle');
+const elCopy = document.getElementById('scenarioCopy');
+const elForecast = document.getElementById('forecast');
+const elStake = document.getElementById('stake');
+const elStakeLabel = document.getElementById('stakeLabel');
+const elQuick = document.getElementById('quick');
+const elCommit = document.getElementById('commit');
+const elReveal = document.getElementById('reveal');
+const elOutcomeBox = document.getElementById('outcomeBox');
+const elNext = document.getElementById('next');
+const elRestart = document.getElementById('restart');
+
+let currentScenario = null;
+let locked = false;
+
+/* --------- Render / flow --------- */
+function updateHUD(){
+  elDay.textContent = day;
+  elMC.textContent = fmtUSD(mc);
+  elStake.value = 0;
+  updateStakeLabel();
+}
+
+function updateStakeLabel(){
+  const pct = Number(elStake.value);
+  const amt = Math.floor(mc * (pct/100));
+  elStakeLabel.textContent = `${fmtUSD(amt)} (${pct}%)`;
+}
+
+function newScenario(){
+  currentScenario = rndFrom(scenarios);
+  elTitle.textContent = currentScenario.title;
+  elCopy.textContent = currentScenario.copy;
+  // 60% chance to show a hint, 40% “No signals”
+  if(Math.random()<0.6){
+    const goodish = Math.random()<0.5;
+    const hint = rndFrom(currentScenario.hints);
+    elForecast.textContent = hint + (goodish ? " (probable)" : " (uncertain)");
+  } else {
+    elForecast.textContent = "No signals today.";
+  }
+  elReveal.style.display = 'none';
+  elOutcomeBox.className = 'outcome';
+  locked = false;
+}
+
+function commit(){
+  if(locked) return;
+  locked = true;
+  const stakePct = Number(elStake.value)/100;
+  const stakeAmt = Math.floor(mc * stakePct);
+
+  if(stakeAmt<=0){
+    // Gentle nudge
+    elReveal.style.display = 'block';
+    elOutcomeBox.className = 'outcome bad';
+    elOutcomeBox.innerHTML = "You sat out. Nothing ventured, nothing gained.";
+    elNext.style.display = 'inline-block';
+    elRestart.style.display = 'none';
+    return;
+  }
+
+  // Determine outcome based on scenario’s weighted buckets
+  const bucket = pickWeighted(currentScenario.outcomes);
+  const pctChange = rand(bucket.range[0], bucket.range[1]); // applies to staked portion
+  const pnl = Math.floor(stakeAmt * pctChange);
+  const newMC = mc - stakeAmt + (stakeAmt + pnl); // unstaked portion stays as-is
+
+  mc = Math.max(0, newMC);
+
+  elReveal.style.display = 'block';
+  const cls = (pnl>=0) ? 'outcome good' : 'outcome bad';
+  elOutcomeBox.className = cls;
+  const sign = pnl>=0 ? '+' : '';
+  elOutcomeBox.innerHTML = `
+    <div><b>${bucket.label}</b> (${(pctChange*100).toFixed(1)}%)</div>
+    <div>${sign}${fmtUSD(pnl)} on a stake of ${fmtUSD(stakeAmt)}</div>
+    <div class="muted">New Market Cap: <b>${fmtUSD(mc)}</b></div>
+  `;
+
+  // Game over if wiped
+  if(mc<=0){
+    elNext.style.display = 'none';
+    elRestart.style.display = 'inline-block';
+  } else {
+    elNext.style.display = 'inline-block';
+    elRestart.style.display = 'none';
+  }
+}
+
+function nextDay(){
+  if(mc<=0) return;
+  day += 1;
+  updateHUD();
+  newScenario();
+}
+
+function restart(){
+  day = 1;
+  mc = 10_000;
+  updateHUD();
+  newScenario();
+}
+
+/* --------- Init --------- */
+;(()=>{
+  // quick stake buttons
+  [0,25,50,75,100].forEach(p=>{
+    const b=document.createElement('button');
+    b.className='btn'; b.textContent=p+'%';
+    b.onclick=()=>{ elStake.value=p; updateStakeLabel(); };
+    elQuick.appendChild(b);
+  });
+  elStake.addEventListener('input', updateStakeLabel);
+  elCommit.addEventListener('click', commit);
+  elNext.addEventListener('click', nextDay);
+  elRestart.addEventListener('click', restart);
+  updateHUD();
+  newScenario();
+})();
+</script>
+</body>
+</html>
