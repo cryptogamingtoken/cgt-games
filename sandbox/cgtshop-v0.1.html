@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CGT Shop — MVP</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;margin:0;background:#0b0f14;color:#e6edf3}
+  .wrap{max-width:900px;margin:0 auto;padding:20px}
+  .hud{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .card{background:#111826;border:1px solid #263241;border-radius:10px;padding:14px}
+  .k{opacity:.8}
+  .v{font-weight:700}
+  .actions button{margin:6px 6px 0 0;padding:10px 14px;border-radius:8px;border:1px solid #2a3a4e;background:#142030;color:#e6edf3;cursor:pointer}
+  .actions button:hover{background:#183047}
+  .hint{margin:12px 0;padding:10px;border-left:4px solid #495d77;background:#121a24;border-radius:6px}
+  .log{max-height:360px;overflow:auto;font-size:14px;line-height:1.4}
+  .ok{color:#7cf08a}.bad{color:#ff8a8a}.muted{opacity:.8}
+  .pill{display:inline-block;padding:2px 8px;border:1px solid #2a3a4e;border-radius:999px;margin-right:6px}
+  .win{color:#7cf08a}.lose{color:#ff8a8a}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CGT Shop — MVP</h1>
+
+  <div class="hud">
+    <div class="card"><div class="k">Day</div><div class="v" id="day">1 / 365</div></div>
+    <div class="card"><div class="k">Market Cap</div><div class="v" id="mc">$10,000</div></div>
+    <div class="card"><div class="k">Price</div><div class="v" id="price">$0.0000285714</div></div>
+    <div class="card"><div class="k">Supply</div><div class="v">350,000,000</div></div>
+    <div class="card"><div class="k">Target</div><div class="v" id="target">$100,000,000,000</div></div>
+  </div>
+
+  <div class="hint" id="forecast">No signals today.</div>
+
+  <div class="actions card">
+    <div style="margin-bottom:6px;">Choose one action:</div>
+    <div id="buttons"></div>
+  </div>
+
+  <div class="card">
+    <div style="margin-bottom:6px;">
+      <span class="pill">Founders: <span id="f-m">0/4</span></span>
+      <span class="pill">Devs: <span id="d-m">0/4</span></span>
+      <span class="pill">Mktg: <span id="m-m">0/4</span></span>
+      <span class="pill">Players: <span id="p-m">0/4</span></span>
+      <span class="pill">DAO Ready: <span id="dao-r">0/4</span></span>
+    </div>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<script>
+const SUPPLY = 350_000_000;
+let TARGET_MC = 100_000_000_000; // $100B
+let day = 1, maxDays = 365;
+let mc = 10_000;
+
+const stakeholders = {
+  founders: ["Custodianship declared","Whitepaper V1 signed","Protocol scope frozen","Custody → Pre-DAO handoff"],
+  devs: ["MVP backend online","Leaderboard & Claims live","Bridge to Solana running","Security review locked"],
+  mktg: ["Website + Whitepaper published","Community loops live","Ecosystem narrative synced","Growth ops playbook locked"],
+  players: ["First 1k wallets","Active CGT tournaments","Claim cadence established","Healthy tournament economy"]
+};
+const progress = {f:0,d:0,m:0,p:0};
+
+const actions = [
+  {id:"marketing_push", label:"📣 Marketing Push", risk:0.35, rMin:0.02, rMax:0.35},
+  {id:"dev_sprint",     label:"🧑‍💻 Dev Sprint",   risk:0.15, rMin:0.01, rMax:0.12},
+  {id:"launch_gqt",     label:"🕹 Launch a GQT",   risk:0.45, rMin:0.05, rMax:0.60},
+  {id:"play_safe",      label:"🧊 Play it Safe",   risk:0.05, rMin:-0.02, rMax:0.04},
+  {id:"treasury_boost", label:"📊 Treasury Boost", risk:0.30, rMin:0.00, rMax:0.25}
+];
+
+const events = [
+  {id:"viral", label:"Viral GQT clip", type:"mild", weight:6, ef:[0.08,0.18]},
+  {id:"bear",  label:"Flat / Bear day", type:"neutral", weight:10, ef:[-0.03,0.03]},
+  {id:"reg",   label:"Regulatory inquiry", type:"existential", weight:2, ef:[-0.35,-0.50]},
+  {id:"dump",  label:"Whale dump", type:"existential", weight:1, ef:[-0.30,-0.55]},
+  {id:"spon",  label:"Surprise sponsorship", type:"mild", weight:4, ef:[0.05,0.12]},
+  {id:"delay", label:"Critical dev delay", type:"mild", weight:3, ef:[-0.08,-0.15]},
+  {id:"sol",   label:"Solana-side hype", type:"mild", weight:5, ef:[0.10,0.22]}
+];
+
+function fmtUSD(n){ return '$' + n.toLocaleString(undefined,{maximumFractionDigits:2}); }
+function price(){ return mc / SUPPLY; }
+function pct(a){ return (a*100).toFixed(2) + '%'; }
+function log(line, cls=""){ const el=document.getElementById('log'); const p=document.createElement('div'); p.className=cls; p.innerHTML=line; el.prepend(p); }
+
+function updateHUD(){
+  document.getElementById('day').textContent = `${day} / ${maxDays}`;
+  document.getElementById('mc').textContent = fmtUSD(mc);
+  document.getElementById('price').textContent = '$' + price().toFixed(10);
+  document.getElementById('f-m').textContent = `${progress.f}/4`;
+  document.getElementById('d-m').textContent = `${progress.d}/4`;
+  document.getElementById('m-m').textContent = `${progress.m}/4`;
+  document.getElementById('p-m').textContent = `${progress.p}/4`;
+  const daoReady = (progress.f>=4)+(progress.d>=4)+(progress.m>=4)+(progress.p>=4);
+  document.getElementById('dao-r').textContent = `${daoReady}/4`;
+}
+
+function weightedPick(pool){
+  const total = pool.reduce((s,e)=>s+e.weight,0);
+  let r = Math.random()*total;
+  for(const e of pool){ if((r-=e.weight)<=0) return e; }
+  return pool[0];
+}
+
+function forecast(){
+  // 60% truthful hint; 40% misleading; sometimes none
+  const roll = Math.random();
+  if(roll<0.20){ document.getElementById('forecast').textContent = 'No signals today.'; return null; }
+  const good = Math.random()<0.6;
+  const msg = good ? ['Buzz building around GQTs','Community sentiment warming','Infra looking stable'][Math.floor(Math.random()*3)]
+                   : ['Regulatory fog ahead','Liquidity thin','Rumours of delays'][Math.floor(Math.random()*3)];
+  document.getElementById('forecast').textContent = msg + (good?' (probable)':' (uncertain)');
+  return good? 'good':'bad';
+}
+
+function tryTickMilestones(){
+  // Simple “hint band” ticks based on MC; gives tiny ladder bonuses
+  const bands = [
+    {key:'f', idx:0, cap:100_000, bonus:[0.01,0.03]},
+    {key:'m', idx:0, cap:120_000, bonus:[0.01,0.03]},
+    {key:'d', idx:0, cap:150_000, bonus:[0.01,0.03]},
+    {key:'p', idx:0, cap:200_000, bonus:[0.01,0.03]},
+    {key:'m', idx:1, cap:700_000, bonus:[0.01,0.04]},
+    {key:'d', idx:1, cap:600_000, bonus:[0.01,0.04]},
+    {key:'f', idx:1, cap:500_000, bonus:[0.01,0.04]},
+    {key:'p', idx:1, cap:1_000_000, bonus:[0.01,0.04]},
+    {key:'d', idx:2, cap:3_000_000, bonus:[0.02,0.05]},
+    {key:'m', idx:2, cap:5_000_000, bonus:[0.02,0.05]},
+    {key:'p', idx:2, cap:8_000_000, bonus:[0.02,0.05]},
+    {key:'f', idx:2, cap:2_000_000, bonus:[0.02,0.05]},
+    {key:'f', idx:3, cap:100_000_000, bonus:[0.03,0.08]},
+    {key:'d', idx:3, cap:150_000_000, bonus:[0.03,0.08]},
+    {key:'m', idx:3, cap:200_000_000, bonus:[0.03,0.08]},
+    {key:'p', idx:3, cap:250_000_000, bonus:[0.03,0.08]}
+  ];
+  for(const b of bands){
+    if(mc>=b.cap){
+      const cur = progress[b.key];
+      if(cur<=b.idx){
+        progress[b.key] = b.idx+1;
+        const label = (b.key==='f'?'Founders':b.key==='d'?'Devs':b.key==='m'?'Marketing':'Players');
+        const bonus = rand(b.bonus[0], b.bonus[1]);
+        const add = Math.max(1, mc*bonus);
+        mc += add;
+        log(`🎯 Milestone ticked for <b>${label}</b> → bonus ${pct(bonus)} (+${fmtUSD(add)})`, 'ok');
+      }
+    }
+  }
+}
+
+function rand(min,max){ return Math.random()*(max-min)+min; }
+
+function existentialBias(){
+  // Scale existential chance with MC progress
+  const prog = Math.min(1, mc / TARGET_MC);
+  return prog; // 0..1
+}
+
+function play(action){
+  if(day>maxDays) return;
+  const hint = forecast();
+  // Adjust weights by existential bias
+  const bias = existentialBias();
+  const pool = events.map(e=>{
+    const w = e.weight * (e.type==='existential' ? (1+2*bias) : (e.type==='mild'? (1+0.3*(1-bias)) : 1));
+    return {...e, weight:w};
+  });
+  const ev = weightedPick(pool);
+
+  // Base action effect
+  let aPct = rand(action.rMin, action.rMax);
+  // Risk: chance to flip sign or dampen
+  if(Math.random() < action.risk){
+    aPct = aPct>0 ? aPct * -0.6 : aPct * 1.2;
+  }
+  // Forecast influence (tiny)
+  if(hint==='good' && aPct>0) aPct *= 1.1;
+  if(hint==='bad'  && aPct>0) aPct *= 0.85;
+
+  // Event effect
+  const ePct = rand(ev.ef[0], ev.ef[1]);
+
+  // Apply combined
+  const base = mc;
+  mc = Math.max(0, Math.floor(mc * (1 + aPct + ePct)));
+
+  log(`Day ${day}: <b>${action.label}</b> (${pct(aPct)}) + Event: <i>${ev.label}</i> (${pct(ePct)}) → MC ${fmtUSD(base)} → <b>${fmtUSD(mc)}</b>`, aPct+ePct>=0?'ok':'bad');
+
+  tryTickMilestones();
+  day++;
+  updateHUD();
+  checkEnd();
+}
+
+function checkEnd(){
+  const daoReady = (progress.f>=4 && progress.d>=4 && progress.m>=4 && progress.p>=4);
+  if(daoReady && mc>=TARGET_MC){
+    log(`🏁 <b>DAO ACTIVATION!</b> You reached ${fmtUSD(mc)} and completed all stakeholder ladders in ${day-1} days.`, 'win');
+    disable();
+  } else if(day>maxDays){
+    log(`⏳ <b>Run ended.</b> Final MC: ${fmtUSD(mc)}. DAO ready: ${daoReady?'Yes':'No'}.`, 'muted');
+    disable();
+  } else if(mc<=0){
+    log(`💥 <b>Rugged.</b> Market cap collapsed to zero on Day ${day-1}.`, 'lose');
+    disable();
+  }
+}
+
+function disable(){
+  document.querySelectorAll('button[data-action]').forEach(b=>b.disabled=true);
+}
+
+function init(){
+  // Buttons
+  const box = document.getElementById('buttons');
+  actions.forEach(a=>{
+    const btn = document.createElement('button');
+    btn.textContent = a.label;
+    btn.setAttribute('data-action', a.id);
+    btn.onclick = ()=>play(a);
+    box.appendChild(btn);
+  });
+  updateHUD();
+  forecast();
+  log('🫖 Welcome to <b>CGT Shop</b>: one action per day, 365 days to reach DAO activation.','muted');
+}
+init();
+</script>
+</body>
+</html>
