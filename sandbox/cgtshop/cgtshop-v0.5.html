@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CGT Shop</title>
+<style>
+  :root{
+    --bg:#0a0f14; --surface:#0f1620; --ink:#e6edf3; --ink-dim:#9fb0c2; --line:#223041;
+    --good:#7cf08a; --bad:#ff8a8a; --hint:#c8d6e5; --accent:#2a7bd4;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+
+  /* Header */
+  header{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; padding:12px 16px;
+    background:rgba(15,22,32,.78); backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
+  }
+  .hud{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .pill{padding:6px 10px; border:1px solid var(--line); border-radius:999px; white-space:nowrap}
+  .k{opacity:.7; margin-right:6px}
+  .v{font-weight:700}
+  .brand-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    height:42px; padding:0 18px; border-radius:999px; border:1px solid var(--line);
+    background:#101a24; color:#a7c7ff; font-weight:900; letter-spacing:.6px; font-size:18px;
+    box-shadow:0 0 0 2px rgba(42,123,212,.08) inset;
+  }
+
+  /* Stage */
+  .stage{min-height:calc(100% - 70px); display:flex; align-items:center; justify-content:center; padding:18px}
+  .card{
+    width:min(980px,100%); min-height:72vh;
+    background:linear-gradient(180deg,#0f1620 0%,#0c121a 100%);
+    border:1px solid var(--line); border-radius:18px; padding:20px 18px;
+    position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;
+  }
+
+  /* Cinematic headline */
+  .headline{
+    font-size:clamp(22px,4.4vw,42px); font-weight:900; letter-spacing:.3px; text-align:center; margin:0 10px 8px;
+    opacity:0; transform:translateX(40vw);
+    animation:slideAcross 1.6s ease-out forwards;
+  }
+  @keyframes slideAcross{
+    0%{opacity:0; transform:translateX(40vw)}
+    15%{opacity:1}
+    85%{opacity:1; transform:translateX(-40vw)}
+    100%{opacity:1; transform:translateX(0)}
+  }
+  .type{color:var(--ink-dim); max-width:820px; text-align:center; min-height:64px; margin:6px 12px 14px}
+
+  .panel{width:100%; max-width:820px; margin-top:8px}
+  .panel-inner{background:#111a27; border:1px solid var(--line); border-radius:14px; padding:16px}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .label{opacity:.8}
+  input[type="range"]{width:100%}
+  .btn{cursor:pointer; border:1px solid var(--line); background:#122034; color:var(--ink); padding:10px 14px; border-radius:10px}
+  .btn:hover{background:#162a43}
+  .muted{opacity:.8}
+
+  /* Outcome focus area (big message up top) */
+  .outcomeWrap{display:none; width:100%; max-width:820px}
+  .bigMsg{
+    margin:6px 0 14px; padding:16px; text-align:center;
+    font-size:clamp(22px,4.8vw,44px); font-weight:900; letter-spacing:.2px;
+  }
+  .bigMsg.good{color:var(--good)}
+  .bigMsg.bad{color:var(--bad)}
+
+  .outcome{padding:18px; border-radius:12px; border:1px solid var(--line); text-align:center}
+  .goodBox{background:#0f1c14; border-color:#234333; color:var(--good)}
+  .badBox{background:#1c0f10; border-color:#432326; color:var(--bad)}
+  .big{font-size:clamp(18px,2.6vw,28px); font-weight:900}
+  .center{display:flex; justify-content:center; gap:10px; margin-top:12px}
+
+  /* Clue overlay (4s+, random 1/7..1/4 of turns) */
+  .flash{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#d9e6ff; font-weight:900; text-align:center; padding:16px;
+    opacity:0; pointer-events:none; filter:blur(0px);
+  }
+  .flash.show{
+    animation:clueIn 400ms ease-out forwards, clueHold 3600ms linear 400ms forwards, clueOut 500ms ease-in 4000ms forwards;
+  }
+  @keyframes clueIn{
+    0%{opacity:0; transform:scale(.85); box-shadow:0 0 0 0 rgba(90,150,255,.0); filter:blur(2px)}
+    100%{opacity:1; transform:scale(1); box-shadow:0 0 120px 20px rgba(90,150,255,.1); filter:blur(0)}
+  }
+  @keyframes clueHold{ 0%{opacity:1} 100%{opacity:1} }
+  @keyframes clueOut{ 0%{opacity:1; transform:scale(1)} 100%{opacity:0; transform:scale(1.03)} }
+
+  /* Flash inner badge */
+  .flashInner{
+    background:rgba(7,11,16,.90); border:1px solid #2a7bd4; border-radius:16px;
+    padding:18px 22px; font-size:clamp(18px,3.8vw,32px); box-shadow:0 0 0 2px rgba(42,123,212,.15) inset;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="hud">
+      <div class="pill"><span class="k">Day</span><span class="v" id="day">1</span></div>
+      <div class="pill"><span class="k">Price</span><span class="v" id="price">$0.00002857</span></div>
+      <div class="pill"><span class="k">Market Cap</span><span class="v" id="mc">$10,000</span></div>
+    </div>
+    <span class="brand-badge">CGT</span>
+  </header>
+
+  <main class="stage">
+    <section class="card">
+      <div id="flash" class="flash"><div id="flashInner" class="flashInner">Signal…</div></div>
+
+      <h1 id="title" class="headline">Loading…</h1>
+      <p id="desc" class="type"></p>
+
+      <div id="controls" class="panel" style="opacity:0;">
+        <div class="panel-inner">
+          <div id="intensityBlock"></div>
+          <div class="row" style="margin-top:12px">
+            <button id="commit" class="btn">Commit</button>
+            <span class="muted">0% = no risk. Higher = bigger swings.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Outcome (clean focus) -->
+      <div id="outcomeWrap" class="outcomeWrap">
+        <div id="bigMsg" class="bigMsg"></div>
+        <div id="outcomeBox" class="outcome"></div>
+        <div class="center">
+          <button id="next" class="btn">Next day</button>
+          <button id="restart" class="btn" style="display:none;">Restart</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script>
+/* ====== Core State ====== */
+const SUPPLY = 350_000_000;
+let day = 1;
+let price = 10_000 / SUPPLY; // initial
+function mc(){ return price * SUPPLY; }
+function fmtUSD(n, d=8){
+  const opts = {minimumFractionDigits:(n<1? d:2), maximumFractionDigits:(n<1? d:2)};
+  return '$' + n.toLocaleString(undefined, opts);
+}
+
+/* ====== Scenarios ======
+   intensity: quantity or percent
+   outcomes: weighted multiplier buckets applied to PRICE (before intensity blending)
+   volScale: extra stretch with intensity
+   posText/negText: shown only AFTER result, big and centered
+*/
+const SCENES = [
+  {
+    id:"creators-launch",
+    title:"3rd-Party Creators — New GQTs Flood In",
+    text:"Creators tee up a wave of GQTs. If the feed catches, demand rips; if timing clashes, listings sink.",
+    intensity:{type:"quantity", label:"How many GQTs launch today?", min:0, max:100000, step:2000, unit:"GQTs"},
+    outcomes:[
+      {label:"Ignored by feed", mult:[0.25,0.60], weight:22},
+      {label:"Muted interest",  mult:[0.70,0.98], weight:33},
+      {label:"Solid traction",  mult:[1.12,1.85], weight:35},
+      {label:"Explosive hype",  mult:[2.00,3.60], weight:10}
+    ],
+    volScale:0.65,
+    posText:"Creators spark a listing frenzy.",
+    negText:"Creators flood the feed, but it fizzles."
+  },
+  {
+    id:"players-weekend",
+    title:"Players — Weekend Tournament Wave",
+    text:"Community organisers rally players. If streamers pick it up, wallets surge; if overshadowed, eyes drift.",
+    intensity:{type:"quantity", label:"How many weekend events?", min:0, max:800, step:20, unit:"events"},
+    outcomes:[
+      {label:"Overshadowed", mult:[0.40,0.85], weight:25},
+      {label:"Steady flow",  mult:[1.08,1.40], weight:50},
+      {label:"Breakout run", mult:[1.80,3.00], weight:25}
+    ],
+    volScale:0.55,
+    posText:"Streamers bite — tournaments boom.",
+    negText:"Competing events steal the spotlight."
+  },
+  {
+    id:"dev-stability",
+    title:"Core Devs — Stability Release",
+    text:"A minor stability upgrade lands. Clean release boosts confidence; a bug flips sentiment.",
+    intensity:{type:"percent", label:"How bold is rollout/testing?", min:0, max:100, step:5, unit:"%"},
+    outcomes:[
+      {label:"Quietly reassuring", mult:[1.06,1.26], weight:55},
+      {label:"Neutral day",       mult:[0.96,1.04], weight:35},
+      {label:"Bug backlash",     mult:[0.55,0.90], weight:10}
+    ],
+    volScale:0.35,
+    posText:"Reliability whispers through the market.",
+    negText:"A small bug shakes confidence."
+  },
+  {
+    id:"reg-fog",
+    title:"Regulatory Fog — Rumour Mill",
+    text:"Sector-wide review whispers. Could blow over or spark a risk-off slide. Bold comms multiplies both outcomes.",
+    intensity:{type:"percent", label:"How bold is comms posture?", min:0, max:100, step:5, unit:"%"},
+    outcomes:[
+      {label:"Flash panic",  mult:[0.20,0.60], weight:15},
+      {label:"Caution day",  mult:[0.72,0.98], weight:50},
+      {label:"False alarm",  mult:[1.00,1.18], weight:25},
+      {label:"Counter-rally",mult:[1.30,2.20], weight:10}
+    ],
+    volScale:0.75,
+    posText:"Calm assurance steadies the room.",
+    negText:"Rumours swirl — risk-off grips the crowd."
+  }
+];
+
+/* ====== Utilities ====== */
+const $ = sel => document.querySelector(sel);
+function choose(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+function pickWeighted(arr){
+  const total = arr.reduce((s,o)=>s+o.weight,0);
+  let r = Math.random()*total;
+  for(const o of arr){ if((r-=o.weight)<=0) return o; }
+  return arr[0];
+}
+function rand(min,max){ return Math.random()*(max-min)+min; }
+
+/* ====== DOM ====== */
+const elDay = $('#day'), elPrice = $('#price'), elMC = $('#mc');
+const elTitle = $('#title'), elDesc = $('#desc'), elControls = $('#controls');
+const elIntensityBlock = $('#intensityBlock'), elCommit = $('#commit');
+const elOutcomeWrap = $('#outcomeWrap'), elBigMsg = $('#bigMsg'), elOutcomeBox = $('#outcomeBox');
+const elNext = $('#next'), elRestart = $('#restart');
+const elFlash = $('#flash'), elFlashInner = $('#flashInner');
+
+let scene = null;
+let intensityValue = 0;
+let locked = false;
+
+/* ====== HUD ====== */
+function updateHUD(){
+  elDay.textContent = day.toString();
+  elPrice.textContent = fmtUSD(price, 8);
+  elMC.textContent = fmtUSD(mc());
+}
+
+/* ====== Typewriter with start delay (headline + 0.7s) ====== */
+function startTypewriterAfterHeadline(text){
+  // headline anim is 1.6s → wait extra 0.7s
+  setTimeout(()=> typewrite(elDesc, text, 12), 2300);
+}
+async function typewrite(el, text, speed=14){
+  el.textContent = '';
+  for(let i=0;i<text.length;i++){
+    el.textContent += text[i];
+    await new Promise(r=>setTimeout(r, speed));
+  }
+  // show controls after typing
+  elControls.style.opacity=1;
+}
+
+/* ====== Randomised clue (prob between 1/7 and 1/4, for ≥4s) ====== */
+function maybeShowClue(){
+  const p = rand(1/7, 1/4); // ~0.142…0.25
+  if(Math.random() < p){
+    elFlashInner.textContent = choose([
+      "Community buzz rising",
+      "Regulatory fog ahead",
+      "Infra feels solid",
+      "Liquidity looks thin",
+      "Streamer whispers…"
+    ]);
+    elFlash.classList.add('show'); // 4.5s total
+    setTimeout(()=> elFlash.classList.remove('show'), 4600);
+  }
+}
+
+/* ====== Intensity UI ====== */
+function renderIntensity(intensity){
+  elIntensityBlock.innerHTML = '';
+  const label = document.createElement('div');
+  label.className='label'; label.textContent=intensity.label;
+
+  const row = document.createElement('div'); row.className='row';
+  const left = document.createElement('div'); left.style.fontWeight='900'; left.style.fontSize='18px';
+  const right = document.createElement('div'); right.style.flex='1';
+
+  const input = document.createElement('input'); input.type='range';
+  input.min=intensity.min; input.max=intensity.max; input.step=intensity.step;
+
+  const setLabel = ()=>{
+    if(intensity.type==='quantity') left.textContent = `${intensityValue.toLocaleString()} ${intensity.unit}`;
+    else left.textContent = `${intensityValue}${intensity.unit}`;
+  };
+
+  intensityValue = intensity.min;
+  input.value=intensityValue;
+  setLabel();
+  input.oninput = e=>{ intensityValue = Number(e.target.value); setLabel(); };
+
+  right.appendChild(input); row.appendChild(left); row.appendChild(right);
+  elIntensityBlock.appendChild(label); elIntensityBlock.appendChild(row);
+}
+
+/* ====== New Scenario ====== */
+function newScenario(){
+  scene = choose(SCENES);
+
+  // reset visuals
+  elTitle.style.animation='none'; void elTitle.offsetWidth; elTitle.style.animation=null; // retrigger
+  elTitle.textContent = scene.title;
+  elDesc.textContent = '';
+  elControls.style.opacity=0;
+  elOutcomeWrap.style.display='none';
+  elBigMsg.textContent = '';
+  elOutcomeBox.className='outcome';
+  locked=false;
+
+  // render controls (hidden until typing completes)
+  renderIntensity(scene.intensity);
+
+  // delay → typewriter
+  startTypewriterAfterHeadline(scene.text);
+
+  // clue overlay (random)
+  maybeShowClue();
+}
+
+/* ====== Outcome Logic with participation scaling ======
+   1) Pick base multiplier from scenario bucket
+   2) Compute intensity norm 0..1
+   3) Blend toward 1.0 by intensity so 20% participation ≈ 20% of the move:
+        eff = 1 + (base - 1) * norm
+   4) Stretch extremes further with volScale * norm
+   5) If not all-in, clamp to a survivable floor (no total wipeout)
+*/
+function applyOutcome(){
+  const intense = scene.intensity;
+  // normalised intensity 0..1
+  let norm = 0;
+  if(intense.max > intense.min){
+    norm = (intensityValue - intense.min) / (intense.max - intense.min);
+  }
+  norm = Math.max(0, Math.min(1, norm));
+
+  // if 0% participation → no move
+  if(norm===0){
+    showOutcome(1, "Sat out");
+    return;
+  }
+
+  const bucket = pickWeighted(scene.outcomes);
+  let base = rand(bucket.mult[0], bucket.mult[1]); // raw market move
+  // participation blending (ensures −60% can't happen at 20% participation)
+  let eff = 1 + (base - 1) * norm;
+
+  // extra stretch with volScale as you go harder
+  const vs = scene.volScale || 0.5;
+  if(eff >= 1) eff = 1 + (eff - 1) * (1 + vs * norm);
+  else         eff = 1 - (1 - eff) * (1 + vs * norm);
+
+  // survivability if not all-in
+  const isAllIn = norm >= 0.999;
+  if(!isAllIn){
+    const floor = 0.40; // floor multiplier (e.g., −60% max damage unless all-in)
+    eff = Math.max(eff, floor);
+  }else{
+    eff = Math.max(eff, 0); // allow true wipeout only when all-in
+  }
+
+  // choose positive/negative headline text AFTER result
+  const pos = eff >= 1;
+  showOutcome(eff, pos ? scene.posText : scene.negText, pos);
+}
+
+function showOutcome(mult, headline, positive=true){
+  const oldPrice = price;
+  price = price * mult;
+
+  // Clear day UI
+  elTitle.textContent = '';
+  elDesc.textContent  = '';
+  elControls.style.opacity = 0;
+
+  // Big message (fills the empty area)
+  elOutcomeWrap.style.display='block';
+  elBigMsg.className = `bigMsg ${positive? 'good':'bad'}`;
+  elBigMsg.textContent = headline;
+
+  // Detail box
+  const cls = positive ? 'goodBox' : 'badBox';
+  elOutcomeBox.className = `outcome ${cls}`;
+  const pct = ((mult-1)*100).toFixed(1);
+  elOutcomeBox.innerHTML = `
+    <div class="big">${positive? 'Gain':'Loss'} &nbsp; (${pct>0?'+':''}${pct}%)</div>
+    <div>Price: <b>${fmtUSD(oldPrice,8)}</b> → <b>${fmtUSD(price,8)}</b></div>
+    <div class="muted">Market Cap: <b>${fmtUSD(oldPrice*SUPPLY)}</b> → <b>${fmtUSD(mc())}</b></div>
+  `;
+
+  // End conditions
+  if(price<=0.0000000001){
+    elNext.style.display='none';
+    elRestart.style.display='inline-block';
+  }else{
+    elNext.style.display='inline-block';
+    elRestart.style.display='none';
+  }
+
+  updateHUD();
+}
+
+/* ====== Flow ====== */
+function nextDay(){
+  if(price<=0.0000000001) return;
+  day += 1;
+  updateHUD();
+  newScenario();
+}
+function restart(){
+  day = 1;
+  price = 10_000 / SUPPLY;
+  updateHUD();
+  newScenario();
+}
+
+/* ====== Init ====== */
+(function init(){
+  updateHUD();
+  newScenario();
+  $('#commit').addEventListener('click', ()=>{ if(!locked){ locked=true; applyOutcome(); } });
+  $('#next').addEventListener('click', nextDay);
+  $('#restart').addEventListener('click', restart);
+})();
+</script>
+</body>
+</html>
