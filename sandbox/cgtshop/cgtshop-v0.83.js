@@ -45,13 +45,20 @@ function updateHUD(){
 }
 
 /* === Scenario Selection === */
-function pickScenarioForMC(mcValue){
-  if(!window.FOUNDER_SCENES || !window.FOUNDER_SCENES.length) return null;
-  let closest = window.FOUNDER_SCENES[0];
-  let minDiff = Infinity;
-  for(const s of window.FOUNDER_SCENES){
-    const diff = Math.abs(s.refMC - mcValue);
-    if(diff < minDiff){ minDiff = diff; closest = s; }
+function pickScenarioForMC(mc) {
+  const data = window.CGT_SCENARIOS?.founder || window.FOUNDER_SCENES;
+  if (!data || !data.length) {
+    console.warn("⚠️ No Founder Scenarios Found");
+    return null;
+  }
+  let closest = data[0];
+  let closestDiff = Math.abs(parseFloat(data[0].marketCap.replace(/[^0-9.]/g, '')) - mc);
+  for (let i = 1; i < data.length; i++) {
+    const diff = Math.abs(parseFloat(data[i].marketCap.replace(/[^0-9.]/g, '')) - mc);
+    if (diff < closestDiff) {
+      closest = data[i];
+      closestDiff = diff;
+    }
   }
   return closest;
 }
