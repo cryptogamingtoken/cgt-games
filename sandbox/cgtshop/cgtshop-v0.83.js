@@ -1,6 +1,9 @@
 /* =============================
    CGT Shop v0.83 Logic
    ============================= */
+console.log('✅ Main JS running');
+console.log('window.CGT_SCENARIOS:', window.CGT_SCENARIOS);
+console.log('window.FOUNDER_SCENES:', window.FOUNDER_SCENES);
 window.addEventListener("load", () => {
 const debug = msg => {
   const box = document.getElementById("debug");
