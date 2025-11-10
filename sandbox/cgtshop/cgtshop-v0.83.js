@@ -2,7 +2,12 @@
    CGT Shop v0.83 Logic
    ============================= */
 window.addEventListener("load", () => {
-
+const debug = msg => {
+  const box = document.getElementById("debug");
+  if (box) box.textContent += msg + "\n";
+};
+   debug("✅ Founder data length: " + (window.CGT_SCENARIOS?.founder?.length ?? "undefined"));
+   
 const SUPPLY = 350_000_000;
 let day = 1;
 let price = 10000 / SUPPLY;
