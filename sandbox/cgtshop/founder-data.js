@@ -11,3 +11,8 @@ window.CGT_SCENARIOS.founder = [
   }
 ];
 window.FOUNDER_SCENES = window.CGT_SCENARIOS.founder;
+// 👇 Add this visible debug confirmation
+document.body.insertAdjacentHTML(
+  'beforeend',
+  '<div style="color:#0f0;font-size:14px;margin-top:10px;">✅ founder-data.js executed</div>'
+);
