@@ -569,3 +569,4 @@ window.CGT_SCENARIOS.founder = [
     "outcomeD": "Unannounced exit causes temporary uncertainty and narrative vacuum."
   }
 ];
+window.FOUNDER_SCENES = window.CGT_SCENARIOS.founder;
