@@ -570,3 +570,4 @@ window.CGT_SCENARIOS.founder = [
   }
 ];
 window.FOUNDER_SCENES = window.CGT_SCENARIOS.founder;
+document.body.insertAdjacentHTML('beforeend', '<div style="color:#0f0; font-size:12px;">✅ founder-data.js loaded</div>');
