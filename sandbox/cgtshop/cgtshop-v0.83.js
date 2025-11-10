@@ -1,6 +1,7 @@
 /* =============================
    CGT Shop v0.83 Logic
    ============================= */
+window.addEventListener("load", () => {
 
 const SUPPLY = 350_000_000;
 let day = 1;
@@ -149,3 +150,4 @@ elChangeMind.addEventListener('click',changeMind);
   const scene = pickScenarioForMC(mc());
   renderScenario(scene);
 })();
+}); // end load wrapper
