@@ -103,9 +103,9 @@ function pickScenarioForMC(curMC, list){
 }
 
 /* ==== DOM ==== */
-const elDay        = $('#day');
-const elPrice      = $('#price');
-const elMC         = $('#mc');
+const elDay        = $('#hudDay');
+const elPrice      = $('#hudPrice');
+const elMC         = $('#hudMC');
 const elTitle      = $('#title');
 const elDesc       = $('#desc');
 const elControls   = $('#controls');
