@@ -440,10 +440,16 @@ function toggleBiasHUD(){
     (elBiasHUD.style.display === 'block') ? 'none' : 'block';
 }
 
-/* ==== Init ==== */
-(function init(){
+// ==== Init ====
+function safeInit() {
+  if (!document.querySelector('#title')) {
+    // wait until DOM fully ready
+    console.log('⏳ DOM not ready yet… retrying');
+    return setTimeout(safeInit, 100);
+  }
+
   updateHUD();
-  if(elBiasSlider){
+  if (elBiasSlider) {
     updateBiasFromSlider();
     elBiasSlider.addEventListener('input', updateBiasFromSlider);
   }
@@ -452,6 +458,28 @@ function toggleBiasHUD(){
   elChangeMind.addEventListener('click', ()=>{ if(!locked) resetDecisionUI(); });
   elNext.addEventListener('click', nextDay);
   elRestart.addEventListener('click', restartGame);
+
+  document.addEventListener('touchstart', e => {
+    if (e.touches && e.touches.length >= 2) {
+      e.preventDefault();
+      toggleBiasHUD();
+    }
+  }, {passive:false});
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'b' || e.key === 'B') toggleBiasHUD();
+  });
+
+  console.log('✅ DOM ready — starting newScenario()');
+  newScenario();
+}
+
+// Ensure DOM fully loaded before init
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', safeInit);
+} else {
+  safeInit();
+}
 
   // Tap card to go next day after outcome
   elCard.addEventListener('click', e => {
