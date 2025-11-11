@@ -1,379 +1,313 @@
-// cgtshop-v0.83.js
+/* =======================================
+   CGTShop v0.83 Logic — Refined Build
+   ======================================= */
 
-window.addEventListener("load", function () {
-  /* ---------- Base State ---------- */
-  var SUPPLY = 350000000;
-  var day = 1;
-  var price = 10000 / SUPPLY; // initial from 10k MC
-  var bias = 80; // % favourable (default)
+window.addEventListener("load", () => {
 
-  var currentScenario = null;
-  var currentPath = null; // "bold" or "conservative"
-  var canGoNextDay = false;
+  const SUPPLY = 350_000_000;
+  let day = 1;
+  let price = 10_000 / SUPPLY;
+  let bias = 80; // %
+  let locked = false;
+  let chosenPath = null;
+  let sliderInput = null;
+  let hasOutcomeShown = false;
 
-  /* ---------- Helpers ---------- */
-  function mc() {
-    return price * SUPPLY;
-  }
+  const $ = s => document.querySelector(s);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const rand = (min, max) => Math.random() * (max - min) + min;
+  const mc = () => price * SUPPLY;
+  const fmtUSD = (n, d = 8) => {
+    const o = {
+      minimumFractionDigits: (n < 1 ? d : 2),
+      maximumFractionDigits: (n < 1 ? d : 2)
+    };
+    return "$" + n.toLocaleString(undefined, o);
+  };
 
-  function fmtUSD(n, d) {
-    if (d === undefined) d = 2;
-    return (
-      "$" +
-      n.toLocaleString(undefined, {
-        minimumFractionDigits: d,
-        maximumFractionDigits: d,
-      })
-    );
-  }
+  /* === DOM Elements === */
+  const elDay = $("#day");
+  const elPrice = $("#price");
+  const elMC = $("#mc");
+  const elTitle = $("#title");
+  const elDesc = $("#desc");
+  const elControls = $("#controls");
+  const elOutcomeWrap = $("#outcomeWrap");
+  const elBigMsg = $("#bigMsg");
+  const elOutcomeBox = $("#outcomeBox");
+  const elNext = $("#next");
+  const elRestart = $("#restart");
+  const elCard = $("#card");
 
-  function parseMarketCapString(str) {
-    if (!str) return 0;
-    var s = String(str).trim().toUpperCase().replace(/,/g, "");
-    var num = parseFloat(s.replace(/[^0-9.]/g, "")) || 0;
-    if (s.indexOf("K") !== -1) num *= 1000;
-    else if (s.indexOf("M") !== -1) num *= 1000000;
-    else if (s.indexOf("B") !== -1) num *= 1000000000;
-    return num;
-  }
+  const elConsBtn = $("#consBtn");
+  const elBoldBtn = $("#boldBtn");
+  const elChoiceRow = $("#choiceRow");
+  const elSliderBlock = $("#sliderBlock");
+  const elCommitRow = $("#commitRow");
+  const elHintRow = $("#hintRow");
+  const elCommit = $("#commit");
+  const elChangeMind = $("#changeMind");
 
-  function bandMaxFromSubBand(subBand) {
-    // e.g. "F-B1-0.1"
-    var max = 3;
-    if (!subBand) return { min: 0.1, max: 3 };
-    var m = subBand.match(/B(\d)/);
-    var band = m ? m[1] : "3";
-    if (band === "1") max = 5;
-    else if (band === "2") max = 4;
-    else if (band === "3") max = 3;
-    else if (band === "4") max = 2;
-    else if (band === "5") max = 1;
-    return { min: 0.1, max: max };
-  }
+  const elBiasHUD = $("#biasHUD");
+  const elBiasSlider = $("#biasSlider");
+  const elBiasValue = $("#biasValue");
 
-  function chooseScenarioForMC(currentMC) {
-    var data =
-      (window.CGT_SCENARIOS && window.CGT_SCENARIOS.founder) ||
-      window.FOUNDER_SCENES ||
-      [];
-    if (!data || !data.length) return null;
+  let founderScenarios =
+    (window.CGT_SCENARIOS && window.CGT_SCENARIOS.founder) || [];
 
-    var best = data[0];
-    var bestDiff = Math.abs(
-      parseMarketCapString(data[0].marketCap) - currentMC
-    );
-
-    for (var i = 1; i < data.length; i++) {
-      var ref = parseMarketCapString(data[i].marketCap);
-      var diff = Math.abs(ref - currentMC);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        best = data[i];
+  if (!Array.isArray(founderScenarios) || founderScenarios.length === 0) {
+    founderScenarios = [
+      {
+        subBand: "F-B1-0.1",
+        marketCap: "$10 K",
+        focus: "First spark",
+        context: "Barely off the ground; prototype exists, but nobody’s watching.",
+        tone: "risky",
+        outcomeA: "Early adopters rally behind the MVP, posting screenshots and feedback that spark a viral micro-wave of credibility.",
+        outcomeB: "Launch exposes half-finished systems; bugs and confusion dominate the narrative, causing early trust erosion.",
+        outcomeC: "A few testers privately confirm the build’s strength; quiet progress builds word-of-mouth trust.",
+        outcomeD: "Delays frustrate insiders who drift away, leaving the project isolated before momentum forms."
       }
+    ];
+  }
+
+  /* === HUD === */
+  function updateHUD() {
+    elDay.textContent = day;
+    elPrice.textContent = fmtUSD(price, 8);
+    elMC.textContent = fmtUSD(mc());
+  }
+
+  /* === Typewriter === */
+  async function typewrite(el, text, speed = 28) {
+    el.textContent = "";
+    for (let i = 0; i < text.length; i++) {
+      el.textContent += text[i];
+      await sleep(speed);
     }
-    return best;
   }
 
-  /* ---------- Build UI into #game ---------- */
-  var gameRoot = document.getElementById("game");
-  if (!gameRoot) {
-    return;
+  /* === Slider Rendering === */
+  function getBandRange(subBand) {
+    const parts = (subBand || "").split("-");
+    const band = parts[1] || "";
+    let max = 3.0;
+    if (band === "B1") max = 5.0;
+    else if (band === "B2") max = 4.0;
+    else if (band === "B3") max = 3.0;
+    else if (band === "B4") max = 2.0;
+    else if (band === "B5") max = 1.0;
+    return { min: 0.1, max, step: 0.1 };
   }
 
-  gameRoot.innerHTML = `
-    <div id="hud" style="margin-bottom:12px;font-size:14px;">
-      <div>Day: <span id="hudDay">1</span></div>
-      <div>Price: <span id="hudPrice">$0.00000000</span></div>
-      <div>Market Cap: <span id="hudMC">$0</span></div>
-    </div>
+  function renderSlider(range, path) {
+    elSliderBlock.innerHTML = "";
+    const labelRow = document.createElement("div");
+    labelRow.className = "slider-label-row";
 
-    <h2 id="sceneTitle" style="margin:10px 0 6px;font-size:18px;"></h2>
-    <p id="sceneContext" style="margin:0 10px 14px;font-size:14px;line-height:1.4;"></p>
+    const lbl = document.createElement("div");
+    lbl.className = "label";
+    lbl.textContent = "Risk multiplier";
 
-    <div id="decisionRow" style="display:flex;justify-content:center;gap:8px;margin:12px 0;">
-      <button id="consBtn" style="padding:8px 12px;border-radius:8px;border:1px solid #1c3e2b;background:#12251a;color:#a6f5b6;font-size:14px;">
-        Conservative
-      </button>
-      <button id="boldBtn" style="padding:8px 12px;border-radius:8px;border:1px solid #23446d;background:#142338;color:#9ac4ff;font-size:14px;">
-        Bold
-      </button>
-    </div>
+    const val = document.createElement("div");
+    val.className = "slider-value";
+    val.id = "sliderValue";
 
-    <div id="sliderBlock" style="display:none;margin-top:10px;">
-      <div style="font-size:13px;margin-bottom:4px;">Risk multiplier</div>
-      <input id="riskSlider" type="range" min="0.1" max="5" step="0.1" value="0.1" style="width:90%;">
-      <div id="sliderValue" style="margin-top:4px;font-size:13px;">0.1×</div>
-      <div style="margin-top:8px;display:flex;justify-content:center;gap:8px;">
-        <button id="changeMindBtn" style="padding:6px 10px;border-radius:8px;border:1px solid #555;background:#111;color:#eee;font-size:13px;">
-          Change Mind 🧠
-        </button>
-        <button id="commitBtn" style="padding:6px 10px;border-radius:8px;border:1px solid #2a7bd4;background:#153255;color:#d0e2ff;font-size:13px;">
-          Commit decision
-        </button>
-      </div>
-    </div>
+    labelRow.appendChild(lbl);
+    labelRow.appendChild(val);
 
-    <div id="outcomeBlock" style="display:none;margin-top:16px;">
-      <div id="bigOutcome" style="font-size:18px;font-weight:bold;margin-bottom:6px;"></div>
-      <div id="detailOutcome" style="font-size:14px;"></div>
-    </div>
-  `;
+    const wrap = document.createElement("div");
+    wrap.className = "sliderWrap";
 
-  var elHudDay = document.getElementById("hudDay");
-  var elHudPrice = document.getElementById("hudPrice");
-  var elHudMC = document.getElementById("hudMC");
-  var elSceneTitle = document.getElementById("sceneTitle");
-  var elSceneContext = document.getElementById("sceneContext");
-  var elDecisionRow = document.getElementById("decisionRow");
-  var elConsBtn = document.getElementById("consBtn");
-  var elBoldBtn = document.getElementById("boldBtn");
-  var elSliderBlock = document.getElementById("sliderBlock");
-  var elRiskSlider = document.getElementById("riskSlider");
-  var elSliderValue = document.getElementById("sliderValue");
-  var elChangeMindBtn = document.getElementById("changeMindBtn");
-  var elCommitBtn = document.getElementById("commitBtn");
-  var elOutcomeBlock = document.getElementById("outcomeBlock");
-  var elBigOutcome = document.getElementById("bigOutcome");
-  var elDetailOutcome = document.getElementById("detailOutcome");
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = range.min;
+    input.max = range.max;
+    input.step = range.step;
+    input.value = range.min;
 
-  /* ---------- Bias HUD (hidden, 2-finger tap) ---------- */
-  var biasHUD = document.createElement("div");
-  biasHUD.id = "biasHUD";
-  biasHUD.style.position = "fixed";
-  biasHUD.style.top = "10px";
-  biasHUD.style.right = "10px";
-  biasHUD.style.padding = "10px";
-  biasHUD.style.borderRadius = "10px";
-  biasHUD.style.border = "1px solid #2a7bd4";
-  biasHUD.style.background = "rgba(5,10,20,0.9)";
-  biasHUD.style.backdropFilter = "blur(6px)";
-  biasHUD.style.color = "#d0e2ff";
-  biasHUD.style.fontSize = "12px";
-  biasHUD.style.display = "none";
-  biasHUD.style.zIndex = "999";
+    const updateLabel = () => {
+      val.textContent = parseFloat(input.value).toFixed(1) + "×";
+    };
+    input.addEventListener("input", updateLabel);
+    updateLabel();
+    wrap.appendChild(input);
 
-  biasHUD.innerHTML = `
-    <div style="margin-bottom:6px;font-weight:bold;">🎲 Favourable bias: <span id="biasValue">80%</span></div>
-    <input id="biasSlider" type="range" min="10" max="90" step="5" value="80" style="width:100%;">
-    <div style="margin-top:6px;font-size:11px;opacity:0.8;">
-      2-finger tap to toggle this overlay.
-    </div>
-    <div style="margin-top:6px;font-size:11px;">
-      <div>Ref: <span id="hudRef">—</span></div>
-      <div>Tone: <span id="hudTone">—</span></div>
-      <div>Ref MC: <span id="hudRefMC">—</span></div>
-    </div>
-  `;
-  document.body.appendChild(biasHUD);
+    // Flip slider for conservative
+    wrap.style.transform = path === "conservative" ? "scaleX(-1)" : "none";
 
-  var elBiasValue = document.getElementById("biasValue");
-  var elBiasSlider = document.getElementById("biasSlider");
-  var elHudRef = document.getElementById("hudRef");
-  var elHudTone = document.getElementById("hudTone");
-  var elHudRefMC = document.getElementById("hudRefMC");
+    elSliderBlock.appendChild(labelRow);
+    elSliderBlock.appendChild(wrap);
 
-  function setBiasFromSlider() {
-    bias = parseInt(elBiasSlider.value, 10) || 80;
+    elSliderBlock.style.display = "block";
+    elCommitRow.style.display = "flex";
+    elHintRow.style.display = "block";
+    elCommitRow.style.flexDirection = path === "bold" ? "row-reverse" : "row";
+
+    sliderInput = input;
+  }
+
+  /* === Decision UI === */
+  function resetDecisionUI() {
+    chosenPath = null;
+    elConsBtn.classList.remove("selected");
+    elBoldBtn.classList.remove("selected");
+    elChoiceRow.style.display = "flex";
+    elSliderBlock.style.display = "none";
+    elCommitRow.style.display = "none";
+    elHintRow.style.display = "none";
+    elCard.classList.remove("bold-mode", "cons-mode");
+  }
+
+  function choosePath(path, range) {
+    chosenPath = path;
+    elChoiceRow.style.display = "none";
+    elCard.classList.toggle("bold-mode", path === "bold");
+    elCard.classList.toggle("cons-mode", path === "conservative");
+    renderSlider(range, path);
+  }
+
+  /* === New Scenario === */
+  async function newScenario() {
+    locked = false;
+    hasOutcomeShown = false;
+    resetDecisionUI();
+
+    elOutcomeWrap.style.display = "none";
+    elTitle.textContent = "Loading…";
+    elDesc.textContent = "";
+    elControls.style.opacity = 0;
+
+    const s = founderScenarios[Math.min(day - 1, founderScenarios.length - 1)];
+
+    await sleep(400);
+
+    // Cinematic title
+    const titleText = s.subBand ? `${s.subBand} · ${s.focus}` : s.focus;
+    elTitle.textContent = titleText;
+
+    // ✅ Remove duplicate stats; only show context + tone/ref
+    const intro =
+      (s.context || "") +
+      "\n\n" +
+      `Tone: ${s.tone || "neutral"} · Ref MC: ${s.marketCap || ""}`;
+    await typewrite(elDesc, intro, 26);
+
+    elControls.style.opacity = 1;
+
+    const range = getBandRange(s.subBand);
+    elConsBtn.onclick = () => choosePath("conservative", range);
+    elBoldBtn.onclick = () => choosePath("bold", range);
+  }
+
+  /* === Outcome === */
+  function resolveDecision() {
+    if (locked || !chosenPath || !sliderInput) return;
+    const s = founderScenarios[Math.min(day - 1, founderScenarios.length - 1)];
+    const mult = parseFloat(sliderInput.value);
+    const isFav = Math.random() < bias / 100;
+    const outcomeText =
+      chosenPath === "bold"
+        ? isFav
+          ? s.outcomeA
+          : s.outcomeB
+        : isFav
+        ? s.outcomeC
+        : s.outcomeD;
+    applyOutcome(isFav, mult, outcomeText, s);
+    locked = true;
+  }
+
+  function applyOutcome(isFav, mult, text, s) {
+    const oldMC = mc();
+    const newMC = isFav ? oldMC * mult : oldMC / Math.max(mult, 0.1);
+    price = newMC / SUPPLY;
+    showOutcome(isFav, mult, text, s, oldMC, newMC);
+  }
+
+  function showOutcome(isFav, mult, text, s, oldMC, newMC) {
+    hasOutcomeShown = true;
+    elControls.style.opacity = 0;
+
+    elBigMsg.className = "bigMsg " + (isFav ? "good" : "bad");
+    elBigMsg.textContent = `${chosenPath === "bold" ? "Bold" : "Conservative"} move\n${isFav ? "Favourable" : "Unfavourable"} outcome`;
+
+    const mcChangePct = ((newMC - oldMC) / oldMC) * 100;
+    const pctStr = (mcChangePct >= 0 ? "+" : "") + mcChangePct.toFixed(1) + "%";
+
+    const priceLine = `Price: <b>${fmtUSD(oldMC / SUPPLY, 8)}</b> → <b>${fmtUSD(price, 8)}</b>`;
+    const mcLine = `Market Cap: <b>${fmtUSD(oldMC)}</b> → <b>${fmtUSD(newMC)}</b>`;
+
+    elOutcomeBox.className = "outcome " + (isFav ? "goodBox" : "badBox");
+    elOutcomeBox.innerHTML = `
+      <div class="big">${isFav ? "Gain" : "Loss"} (${pctStr})</div>
+      <div>${priceLine}</div>
+      <div class="muted">${mcLine}</div>
+      <div style="margin-top:10px;">${text}</div>
+      <div class="muted" style="margin-top:10px;">${s.focus}</div>
+    `;
+
+    elOutcomeWrap.style.display = "block";
+    elNext.style.display = price <= 0 ? "none" : "inline-block";
+    elRestart.style.display = price <= 0 ? "inline-block" : "none";
+
+    updateHUD();
+  }
+
+  /* === Flow === */
+  function nextDay() {
+    if (price <= 0) return;
+    day++;
+    updateHUD();
+    newScenario();
+  }
+  function restartGame() {
+    day = 1;
+    price = 10_000 / SUPPLY;
+    updateHUD();
+    newScenario();
+  }
+
+  /* === Bias HUD === */
+  function updateBiasFromSlider() {
+    bias = parseInt(elBiasSlider.value, 10);
     elBiasValue.textContent = bias + "%";
   }
-  setBiasFromSlider();
-  elBiasSlider.addEventListener("input", setBiasFromSlider, false);
-
   function toggleBiasHUD() {
-    biasHUD.style.display = biasHUD.style.display === "none" ? "block" : "none";
+    elBiasHUD.style.display =
+      elBiasHUD.style.display === "block" ? "none" : "block";
   }
 
-  document.addEventListener(
-    "touchstart",
-    function (e) {
+  /* === Init === */
+  (function init() {
+    updateHUD();
+    updateBiasFromSlider();
+
+    elBiasSlider.addEventListener("input", updateBiasFromSlider);
+    elCommit.addEventListener("click", resolveDecision);
+    elChangeMind.addEventListener("click", () => {
+      if (!locked) resetDecisionUI();
+    });
+    elNext.addEventListener("click", nextDay);
+    elRestart.addEventListener("click", restartGame);
+
+    elCard.addEventListener("click", e => {
+      if (!hasOutcomeShown) return;
+      if (e.target.closest(".panel-inner") || e.target.closest(".btn") || e.target.closest("#biasHUD")) return;
+      nextDay();
+    });
+
+    document.addEventListener("touchstart", e => {
       if (e.touches && e.touches.length >= 2) {
         e.preventDefault();
         toggleBiasHUD();
       }
-    },
-    { passive: false }
-  );
+    }, { passive: false });
 
-  // Optional: 'b' key toggles on desktop
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "b" || e.key === "B") toggleBiasHUD();
-  });
+    document.addEventListener("keydown", e => {
+      if (e.key.toLowerCase() === "b") toggleBiasHUD();
+    });
 
-  /* ---------- HUD Update ---------- */
-  function updateHUD() {
-    elHudDay.textContent = String(day);
-    elHudPrice.textContent = fmtUSD(price, 8);
-    elHudMC.textContent = fmtUSD(mc(), 2);
-  }
-
-  /* ---------- Scene Loading ---------- */
-  function loadScenarioForCurrentMC() {
-    var scenario = chooseScenarioForMC(mc());
-    currentScenario = scenario;
-    currentPath = null;
-    canGoNextDay = false;
-
-    if (!scenario) {
-      elSceneTitle.textContent = "No scenario available";
-      elSceneContext.textContent = "";
-      elDecisionRow.style.display = "none";
-      elSliderBlock.style.display = "none";
-      elOutcomeBlock.style.display = "none";
-      return;
-    }
-
-    // Stakeholder name is "Founders" for this sheet
-    var title = "Founders · " + (scenario.focus || "");
-    elSceneTitle.textContent = title;
-    elSceneContext.textContent = scenario.context || "";
-
-    // HUD meta
-    elHudRef.textContent = scenario.subBand || "—";
-    elHudTone.textContent = scenario.tone || "—";
-    elHudRefMC.textContent = scenario.marketCap || "—";
-
-    // Reset UI
-    elDecisionRow.style.display = "flex";
-    elSliderBlock.style.display = "none";
-    elOutcomeBlock.style.display = "none";
-    elRiskSlider.value = 0.1;
-    elSliderValue.textContent = "0.1×";
-  }
-
-  /* ---------- Decision & Slider ---------- */
-  function applySliderStylingForPath(path) {
-    if (path === "bold") {
-      // Bold → blue, right-side emphasis
-      elRiskSlider.style.background =
-        "linear-gradient(90deg, rgba(100,160,255,0.9) 0%, rgba(15,20,35,0.9) 100%)";
-    } else {
-      // Conservative → green, left-side emphasis
-      elRiskSlider.style.background =
-        "linear-gradient(270deg, rgba(120,240,150,0.9) 0%, rgba(15,20,35,0.9) 100%)";
-    }
-  }
-
-  function showSliderForPath(path) {
-    currentPath = path;
-    elDecisionRow.style.display = "none";
-    elSliderBlock.style.display = "block";
-
-    var range = bandMaxFromSubBand(
-      currentScenario ? currentScenario.subBand : null
-    );
-    elRiskSlider.min = range.min;
-    elRiskSlider.max = range.max;
-    elRiskSlider.step = 0.1;
-    elRiskSlider.value = range.min;
-    elSliderValue.textContent = range.min.toFixed(1) + "×";
-
-    applySliderStylingForPath(path);
-  }
-
-  elRiskSlider.addEventListener(
-    "input",
-    function () {
-      var v = parseFloat(elRiskSlider.value || "0.1");
-      elSliderValue.textContent = v.toFixed(1) + "×";
-    },
-    false
-  );
-
-  elConsBtn.addEventListener(
-    "click",
-    function () {
-      showSliderForPath("conservative");
-    },
-    false
-  );
-
-  elBoldBtn.addEventListener(
-    "click",
-    function () {
-      showSliderForPath("bold");
-    },
-    false
-  );
-
-  elChangeMindBtn.addEventListener(
-    "click",
-    function () {
-      if (canGoNextDay) return;
-      currentPath = null;
-      elSliderBlock.style.display = "none";
-      elDecisionRow.style.display = "flex";
-    },
-    false
-  );
-
-  /* ---------- Outcome Logic ---------- */
-  function resolveDecision() {
-    if (!currentScenario || !currentPath || canGoNextDay) return;
-
-    var mult = parseFloat(elRiskSlider.value || "0.1");
-    if (isNaN(mult) || mult <= 0) mult = 0.1;
-
-    var favourable = Math.random() * 100 < bias;
-
-    // MC impact formula: ±(mult) → +500% at 5.0x
-    var oldMC = mc();
-    var changeFactor = favourable ? (1 + mult) : Math.max(0, 1 - mult);
-    var newMC = oldMC * changeFactor;
-
-    price = newMC / SUPPLY;
-    updateHUD();
-
-    // Display outcome
-    canGoNextDay = true;
-    elOutcomeBlock.style.display = "block";
-
-    var pct = (mult * 100).toFixed(0);
-    var sign = favourable ? "+" : "−";
-
-    var headline = "";
-    if (favourable) {
-      headline = currentPath === "bold" ? "Bold move pays off" : "Patience rewarded";
-    } else {
-      headline = currentPath === "bold" ? "Overreach burns gains" : "Caution costs upside";
-    }
-
-    elBigOutcome.textContent = headline + " (" + sign + pct + "%)";
-    elBigOutcome.style.color = favourable ? "#7cf08a" : "#ff8a8a";
-
-    var detail =
-      "Market Cap: <b>" +
-      fmtUSD(oldMC, 2) +
-      "</b> → <b>" +
-      fmtUSD(newMC, 2) +
-      "</b><br/>" +
-      "Path: " +
-      (currentPath === "bold" ? "Bold" : "Conservative") +
-      " · " +
-      (favourable ? "Favourable" : "Unfavourable") +
-      " outcome";
-    elDetailOutcome.innerHTML = detail;
-  }
-
-  elCommitBtn.addEventListener("click", resolveDecision, false);
-
-  /* ---------- Tap Anywhere → Next Day ---------- */
-  document.addEventListener(
-    "click",
-    function (e) {
-      if (!canGoNextDay) return;
-      // ignore clicks on buttons / HUD
-      if (e.target.closest("#sliderBlock") || e.target.closest("button") || e.target.closest("#biasHUD")) {
-        return;
-      }
-      day += 1;
-      canGoNextDay = false;
-      loadScenarioForCurrentMC();
-      updateHUD();
-    },
-    false
-  );
-
-  /* ---------- Init ---------- */
-  updateHUD();
-  loadScenarioForCurrentMC();
+    newScenario();
+  })();
 });
