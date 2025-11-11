@@ -297,7 +297,7 @@ async function newScenario(){
   void elTitle.offsetWidth;
   elTitle.style.animation = null;
 
-  const titleText = s.subBand ? `${s.subBand} · ${s.focus}` : (s.focus || 'Founder scenario');
+  const titleText = `Founders · ${s.focus || "Untitled"}`;
   elTitle.textContent = titleText;
 
   // Main card: ONLY context (no tone/ref)
