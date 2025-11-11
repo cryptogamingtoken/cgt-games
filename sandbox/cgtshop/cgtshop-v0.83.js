@@ -1,7 +1,7 @@
 /* =======================================
    CGT Shop v0.83  (external JS version)
    ======================================= */
-
+document.body.insertAdjacentHTML('beforeend', '<div style="color:#0f0;font-size:12px;">✅ injection ok, starting init()</div>');
 // Inject HTML structure if missing (needed on iOS + clean builds)
 const gameCard = document.querySelector('#game');
 if (gameCard && gameCard.children.length === 0) {
