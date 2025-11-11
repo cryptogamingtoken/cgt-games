@@ -149,7 +149,34 @@ async function maybeShowClueBlocking(){
     await sleep(700);
   }
 }
+/* ==== MC helper + scenario picker ==== */
+// Parse things like "$10 K", "$2.5 M", "$100 B +"
+function parseRefMC(str){
+  if (!str) return 0;
+  const cleaned = String(str).replace('+','').trim();
+  const m = cleaned.match(/([\d.]+)\s*([KMB])/i);
+  if (!m) return 0;
+  const value = parseFloat(m[1]);
+  const unit  = m[2].toUpperCase();
+  const mul   = unit === 'K' ? 1e3 : unit === 'M' ? 1e6 : 1e9;
+  return value * mul;
+}
 
+// Pick the scenario whose Ref MC is closest to the current MC
+function pickScenarioForMC(curMC, list){
+  let best = null;
+  let bestDiff = Infinity;
+  for (const s of list){
+    const ref = parseRefMC(s.marketCap);
+    if (!ref) continue;
+    const diff = Math.abs(ref - curMC);
+    if (diff < bestDiff){
+      bestDiff = diff;
+      best = s;
+    }
+  }
+  return best || list[0];
+}
 /* ==== Slider ranges per band ==== */
 function getBandRange(subBand){
   const parts = (subBand || '').split('-'); // e.g. F-B2-0.3
