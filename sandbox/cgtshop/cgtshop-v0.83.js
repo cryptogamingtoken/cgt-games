@@ -1,7 +1,56 @@
 /* =======================================
    CGT Shop v0.83  (external JS version)
    ======================================= */
+// If the card area is empty, inject the expected structure
+const gameCard = document.querySelector('#game');
+if (gameCard && gameCard.children.length === 0) {
+  gameCard.innerHTML = `
+    <div id="flash" class="flash"><div id="flashInner"></div></div>
 
+    <h1 id="title" class="headline"></h1>
+    <p id="desc" class="type"></p>
+
+    <div id="controls" class="panel" style="opacity:0;">
+      <div class="panel-inner">
+        <div class="row choice-row" id="choiceRow">
+          <button id="consBtn" class="btn choice cons">Conservative path</button>
+          <button id="boldBtn" class="btn choice bold">Bold path</button>
+        </div>
+        <div id="sliderBlock"></div>
+        <div class="row" id="commitRow" style="margin-top:10px; display:none;">
+          <button id="changeMind" class="btn">Change Mind 🧠</button>
+          <button id="commit" class="btn">Commit decision</button>
+        </div>
+        <div class="muted" id="hintRow" style="margin-top:4px; display:none;">
+          Adjust your multiplier, then commit. Change your mind if you want to pick the other path.
+        </div>
+      </div>
+    </div>
+
+    <div id="outcomeWrap" class="outcomeWrap" style="display:none;">
+      <div id="bigMsg" class="bigMsg"></div>
+      <div id="outcomeBox" class="outcome"></div>
+      <div class="center">
+        <button id="next" class="btn">Next day ▶️</button>
+        <button id="restart" class="btn" style="display:none;">Restart 🔁</button>
+      </div>
+    </div>
+
+    <div id="biasHUD" class="bias-hud" style="display:none;">
+      <div class="bias-hud-header">
+        <span>🎯 Favourable bias</span>
+        <span id="biasValue">80%</span>
+      </div>
+      <input type="range" id="biasSlider" min="10" max="90" step="5" value="80" />
+      <div class="muted" style="margin-top:4px;">
+        Two-finger tap (or press “B”) to toggle this during testing.
+      </div>
+      <div class="meta"><b>Ref:</b> <span id="metaRef">—</span></div>
+      <div class="meta"><b>Tone:</b> <span id="metaTone">—</span></div>
+      <div class="meta"><b>MC:</b> <span id="metaMC">—</span></div>
+    </div>
+  `;
+}
 /* ==== Core state ==== */
 const SUPPLY = 350_000_000;
 let day = 1;
