@@ -1,8 +1,8 @@
 /* =======================================
-   CGT Shop v0.83  (external JS version)
+   CGT Shop v0.83 – Stable iOS Version
    ======================================= */
-document.body.insertAdjacentHTML('beforeend', '<div style="color:#0f0;font-size:12px;">✅ injection ok, starting init()</div>');
-// Inject HTML structure if missing (needed on iOS + clean builds)
+
+// Inject HTML if missing (for GitHub Pages & mobile Safari)
 const gameCard = document.querySelector('#game');
 if (gameCard && gameCard.children.length === 0) {
   gameCard.innerHTML = `
@@ -43,9 +43,7 @@ if (gameCard && gameCard.children.length === 0) {
         <span id="biasValue">80%</span>
       </div>
       <input type="range" id="biasSlider" min="10" max="90" step="5" value="80" />
-      <div class="muted" style="margin-top:4px;">
-        Two-finger tap (or press “B”) to toggle this during testing.
-      </div>
+      <div class="muted" style="margin-top:4px;">Two-finger tap (or press “B”) to toggle during testing.</div>
       <div class="meta"><b>Ref:</b> <span id="metaRef">—</span></div>
       <div class="meta"><b>Tone:</b> <span id="metaTone">—</span></div>
       <div class="meta"><b>MC:</b> <span id="metaMC">—</span></div>
@@ -53,56 +51,22 @@ if (gameCard && gameCard.children.length === 0) {
   `;
 }
 
+// ✅ visible proof that JS loaded
+document.body.insertAdjacentHTML('beforeend', '<div style="color:#0f0;font-size:12px;">✅ cgtshop-v0.83.js running</div>');
+
 /* ==== Core state ==== */
 const SUPPLY = 350_000_000;
 let day = 1;
 let price = 10_000 / SUPPLY;
-let bias = 80;              // 10–90% favourable
+let bias = 80;
 let locked = false;
-let chosenPath = null;      // 'bold' | 'conservative'
+let chosenPath = null;
 let sliderInput = null;
 let hasOutcomeShown = false;
 let currentScenario = null;
 
-/* ==== Helpers ==== */
-const $ = s => document.querySelector(s);
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const mc = () => price * SUPPLY;
-function fmtUSD(n, d = 8){
-  const o = {
-    minimumFractionDigits:(n<1?d:2),
-    maximumFractionDigits:(n<1?d:2)
-  };
-  return '$'+n.toLocaleString(undefined,o);
-}
-
-/* Parse "$10 K", "$2.5 M", "$100 B +" → number */
-function parseRefMC(str){
-  if(!str) return 0;
-  const m = String(str).replace('+','').trim().match(/([\d.]+)\s*([KMB])/i);
-  if(!m) return 0;
-  const v = parseFloat(m[1]);
-  const unit = m[2].toUpperCase();
-  const mul = unit === 'K' ? 1e3 : unit === 'M' ? 1e6 : 1e9;
-  return v * mul;
-}
-
-/* Pick scenario whose ref MC is closest to current MC */
-function pickScenarioForMC(curMC, list){
-  let best = null, bestDiff = Infinity;
-  for(const s of list){
-    const ref = parseRefMC(s.marketCap);
-    if(!ref) continue;
-    const diff = Math.abs(ref - curMC);
-    if(diff < bestDiff){
-      bestDiff = diff;
-      best = s;
-    }
-  }
-  return best || list[0];
-}
-
 /* ==== DOM ==== */
+const $ = s => document.querySelector(s);
 const elDay        = $('#hudDay');
 const elPrice      = $('#hudPrice');
 const elMC         = $('#hudMC');
@@ -114,7 +78,7 @@ const elBigMsg     = $('#bigMsg');
 const elOutcomeBox = $('#outcomeBox');
 const elNext       = $('#next');
 const elRestart    = $('#restart');
-const elCard       = $('#card');
+const elCard       = $('#game');
 
 const elConsBtn    = $('#consBtn');
 const elBoldBtn    = $('#boldBtn');
@@ -472,3 +436,12 @@ function toggleBiasHUD(){
 
   newScenario();
 })();
+// Fallback init trigger (for iOS load timing)
+window.addEventListener('load', () => {
+  if (typeof newScenario === 'function') {
+    document.body.insertAdjacentHTML('beforeend', '<div style="color:#0f0;font-size:12px;">✅ fallback init triggered</div>');
+    newScenario();
+  } else {
+    document.body.insertAdjacentHTML('beforeend', '<div style="color:#f55;font-size:12px;">❌ newScenario missing</div>');
+  }
+});
