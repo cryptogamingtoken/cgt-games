@@ -1,7 +1,8 @@
 /* =======================================
    CGT Shop v0.83  (external JS version)
    ======================================= */
-// If the card area is empty, inject the expected structure
+
+// Inject HTML structure if missing (needed on iOS + clean builds)
 const gameCard = document.querySelector('#game');
 if (gameCard && gameCard.children.length === 0) {
   gameCard.innerHTML = `
@@ -51,6 +52,7 @@ if (gameCard && gameCard.children.length === 0) {
     </div>
   `;
 }
+
 /* ==== Core state ==== */
 const SUPPLY = 350_000_000;
 let day = 1;
