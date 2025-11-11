@@ -65,6 +65,22 @@ let sliderInput = null;
 let hasOutcomeShown = false;
 let currentScenario = null;
 
+/* ==== Helpers ==== */
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function mc() {
+  return price * SUPPLY;
+}
+
+function fmtUSD(n, d = 8) {
+  const o = {
+    minimumFractionDigits: (n < 1 ? d : 2),
+    maximumFractionDigits: (n < 1 ? d : 2)
+  };
+  return '$' + n.toLocaleString(undefined, o);
+}
+
 /* ==== DOM ==== */
 const $ = s => document.querySelector(s);
 const elDay        = $('#hudDay');
