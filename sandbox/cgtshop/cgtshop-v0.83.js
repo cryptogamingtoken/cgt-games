@@ -50,7 +50,10 @@ if (gameCard && gameCard.children.length === 0) {
     </div>
   `;
 }
-
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("📘 DOM ready — forcing start");
+  safeInit();
+});
 // ✅ visible proof that JS loaded
 document.body.insertAdjacentHTML('beforeend', '<div style="color:#0f0;font-size:12px;">✅ cgtshop-v0.83.js running</div>');
 
@@ -442,12 +445,18 @@ function toggleBiasHUD(){
 
 // ==== Init ====
 function safeInit() {
-  if (!document.querySelector('#title')) {
-    // wait until DOM fully ready
-    console.log('⏳ DOM not ready yet… retrying');
-    return setTimeout(safeInit, 100);
+  // wait until key nodes exist
+  const title = document.querySelector('#title');
+  const desc  = document.querySelector('#desc');
+  const cons  = document.querySelector('#consBtn');
+  const bold  = document.querySelector('#boldBtn');
+
+  if (!title || !desc || !cons || !bold) {
+    console.log('⏳ waiting for DOM…');
+    return setTimeout(safeInit, 120);
   }
 
+  console.log('✅ DOM elements ready — starting HUD + scenario');
   updateHUD();
   if (elBiasSlider) {
     updateBiasFromSlider();
@@ -470,15 +479,8 @@ function safeInit() {
     if (e.key === 'b' || e.key === 'B') toggleBiasHUD();
   });
 
-  console.log('✅ DOM ready — starting newScenario()');
+  // 🚀 finally launch scenario
   newScenario();
-}
-
-// Ensure DOM fully loaded before init
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', safeInit);
-} else {
-  safeInit();
 }
 
   // Tap card to go next day after outcome
