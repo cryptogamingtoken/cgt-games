@@ -444,45 +444,19 @@ function toggleBiasHUD(){
 }
 
 // ==== Init ====
-function safeInit() {
-  // wait until key nodes exist
-  const title = document.querySelector('#title');
-  const desc  = document.querySelector('#desc');
-  const cons  = document.querySelector('#consBtn');
-  const bold  = document.querySelector('#boldBtn');
-
-  if (!title || !desc || !cons || !bold) {
-    console.log('⏳ waiting for DOM…');
-    return setTimeout(safeInit, 120);
+/* ==== Final Safari-safe startup ==== */
+function fullyReady(fn) {
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(fn, 0);
+  } else {
+    document.addEventListener("DOMContentLoaded", fn, { once: true });
   }
-
-  console.log('✅ DOM elements ready — starting HUD + scenario');
-  updateHUD();
-  if (elBiasSlider) {
-    updateBiasFromSlider();
-    elBiasSlider.addEventListener('input', updateBiasFromSlider);
-  }
-
-  elCommit.addEventListener('click', resolveDecision);
-  elChangeMind.addEventListener('click', ()=>{ if(!locked) resetDecisionUI(); });
-  elNext.addEventListener('click', nextDay);
-  elRestart.addEventListener('click', restartGame);
-
-  document.addEventListener('touchstart', e => {
-    if (e.touches && e.touches.length >= 2) {
-      e.preventDefault();
-      toggleBiasHUD();
-    }
-  }, {passive:false});
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'b' || e.key === 'B') toggleBiasHUD();
-  });
-
-  // 🚀 finally launch scenario
-  newScenario();
 }
 
+fullyReady(() => {
+  console.log("✅ DOM fully ready — launching CGTShop v0.83");
+  safeInit();
+});
   // Tap card to go next day after outcome
   elCard.addEventListener('click', e => {
     if(!hasOutcomeShown) return;
