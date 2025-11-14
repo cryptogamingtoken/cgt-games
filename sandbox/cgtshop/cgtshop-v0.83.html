@@ -602,6 +602,10 @@
   align-items: flex-start !important;
   padding-top: 40px !important;
 }
+.stage.outcome-shift {
+  align-items: flex-start !important;
+  padding-top: 32px !important;
+}
 </style>
 </head>
 <body>
@@ -1021,6 +1025,9 @@ function applyOutcome(isFavourable, mult, text, scenario){
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   hasOutcomeShown = true;
 
+  // add shift class
+  document.querySelector('.stage').classList.add('outcome-shift');
+
   // Hide the main scenario header during outcome
 elTitle.classList.add('vanish');
 elDesc.classList.add('vanish');
@@ -1078,7 +1085,7 @@ function nextDay(){
   elTitle.classList.remove('vanish');
 elDesc.classList.remove('vanish');
 elCard.classList.remove('outcome-mode');
-
+document.querySelector('.stage').classList.remove('outcome-shift');
   day += 1;
   updateHUD();
   newScenario();
@@ -1088,6 +1095,7 @@ function restartGame(){
   elTitle.classList.remove('vanish');
 elDesc.classList.remove('vanish');
 elCard.classList.remove('outcome-mode');
+document.querySelector('.stage').classList.remove('outcome-shift');
   day = 1;
   price = 10_000 / SUPPLY;
   updateHUD();
