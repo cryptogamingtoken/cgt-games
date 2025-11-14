@@ -732,12 +732,19 @@ function resetDecisionUI(){
   elHintRow.style.display = 'none';
   sliderInput = null;
   elCard.classList.remove('bold-mode','cons-mode');
+
+  // Restore scenario headline + context
+  if (currentScenario) {
+    elTitle.textContent = `Founders · ${currentScenario.focus || ''}`;
+    elDesc.textContent = currentScenario.context || '';
+  }
 }
 
 function choosePath(path, range){
   chosenPath = path;
   elChoiceRow.style.display = 'none';
 
+  // Assign mode classes
   if (path === 'bold'){
     elBoldBtn.classList.add('selected');
     elConsBtn.classList.remove('selected');
@@ -748,6 +755,17 @@ function choosePath(path, range){
     elBoldBtn.classList.remove('selected');
     elCard.classList.add('cons-mode');
     elCard.classList.remove('bold-mode');
+  }
+
+  // Replace headline + description with path prompts
+  if (currentScenario) {
+    if (path === 'bold') {
+      elTitle.textContent = "Bold Path";
+      elDesc.textContent = currentScenario.boldPrompt || "";
+    } else {
+      elTitle.textContent = "Conservative Path";
+      elDesc.textContent = currentScenario.conservativePrompt || "";
+    }
   }
 
   renderSlider(range, path);
