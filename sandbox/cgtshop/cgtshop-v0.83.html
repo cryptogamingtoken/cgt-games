@@ -580,6 +580,14 @@
 .card.cons-mode {
   box-shadow: 0 0 24px rgba(124,240,138,0.28);
 }
+/* Completely remove title/desc space during outcome */
+.vanish {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+}
 </style>
 </head>
 <body>
@@ -1000,8 +1008,8 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   hasOutcomeShown = true;
 
   // Hide the main scenario header during outcome
-elTitle.style.display = 'none';
-elDesc.style.display = 'none';
+elTitle.classList.add('vanish');
+elDesc.classList.add('vanish');
   elControls.style.opacity = 0;
 
   elBigMsg.className = 'bigMsg ' + (isFavourable ? 'good' : 'bad');
@@ -1052,8 +1060,8 @@ elDesc.style.display = 'none';
 /* ========= Flow ========= */
 function nextDay(){
   if (price <= 0) return;
-  elTitle.style.display = '';
-elDesc.style.display = '';
+  elTitle.classList.remove('vanish');
+elDesc.classList.remove('vanish');
 
   day += 1;
   updateHUD();
@@ -1061,8 +1069,8 @@ elDesc.style.display = '';
 }
 
 function restartGame(){
-  elTitle.style.display = '';
-elDesc.style.display = '';
+  elTitle.classList.remove('vanish');
+elDesc.classList.remove('vanish');
   day = 1;
   price = 10_000 / SUPPLY;
   updateHUD();
