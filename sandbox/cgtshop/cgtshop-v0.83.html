@@ -459,6 +459,52 @@
   0% { opacity:0; transform:translateY(10px); }
   100% { opacity:1; transform:translateY(0); }
 }
+/* ======================================
+   Outcome — Cinematic Header
+====================================== */
+
+.outcome-title {
+  font-size: clamp(20px, 3.8vw, 34px);
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 6px;
+  animation: fadeInUp .45s ease-out forwards;
+}
+
+.outcome-title.bold {
+  color: rgba(135,180,255,1);
+}
+.outcome-title.cons {
+  color: rgba(124,240,138,1);
+}
+
+.outcome-sub {
+  font-size: clamp(16px, 3vw, 26px);
+  font-weight: 700;
+  text-align: center;
+  opacity: 0;
+  animation: fadeInUp .45s ease-out .08s forwards;
+}
+
+.outcome-sub.good {
+  color: var(--good);
+}
+.outcome-sub.bad {
+  color: var(--bad);
+}
+
+.outcome-desc {
+  margin-top: 12px;
+  max-width: 740px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 14px;
+  text-align: center;
+  color: var(--ink-dim);
+  line-height: 1.45;
+  opacity: 0;
+  animation: fadeInUp .45s ease-out .18s forwards;
+}
   /* ======================================================
    Dynamic Slider Theme (Bold ↔ Conservative)
    ====================================================== */
@@ -953,14 +999,25 @@ function applyOutcome(isFavourable, mult, text, scenario){
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   hasOutcomeShown = true;
 
-  elTitle.textContent = '';
-  elDesc.textContent = '';
+  // Hide the main scenario header during outcome
+elTitle.style.display = 'none';
+elDesc.style.display = 'none';
   elControls.style.opacity = 0;
 
   elBigMsg.className = 'bigMsg ' + (isFavourable ? 'good' : 'bad');
   const line1 = chosenPath === 'bold' ? 'Bold move' : 'Conservative move';
   const line2 = isFavourable ? 'Favourable outcome' : 'Unfavourable outcome';
-  elBigMsg.textContent = line1 + '\n' + line2;
+  elBigMsg.innerHTML = `
+  <div class="outcome-title ${chosenPath}">
+    ${chosenPath === 'bold' ? '🔥 Bold Path' : '🛡️ Conservative Path'}
+  </div>
+  <div class="outcome-sub ${isFavourable ? 'good' : 'bad'}">
+    ${isFavourable ? 'Favourable Outcome' : 'Unfavourable Outcome'}
+  </div>
+  <div class="outcome-desc">
+    ${text}
+  </div>
+`;
 
   elOutcomeWrap.style.display = 'block';
   const cls = isFavourable ? 'goodBox' : 'badBox';
@@ -996,12 +1053,17 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
 /* ========= Flow ========= */
 function nextDay(){
   if (price <= 0) return;
+  elTitle.style.display = '';
+elDesc.style.display = '';
+
   day += 1;
   updateHUD();
   newScenario();
 }
 
 function restartGame(){
+  elTitle.style.display = '';
+elDesc.style.display = '';
   day = 1;
   price = 10_000 / SUPPLY;
   updateHUD();
