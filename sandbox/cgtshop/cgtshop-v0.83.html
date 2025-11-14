@@ -379,6 +379,86 @@
       font-size:14px;
     }
   }
+  /* ==========================================
+   Enhanced Path UI (Cinematic)
+========================================== */
+
+.path-title {
+  font-size: clamp(22px, 4vw, 38px);
+  font-weight: 900;
+  text-align: center;
+  margin: 4px 0 6px;
+  position: relative;
+  letter-spacing: .3px;
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fadeInUp .45s ease-out forwards;
+}
+
+.path-desc {
+  text-align: center;
+  font-size: 14px;
+  margin: 0 auto 12px;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translateY(4px);
+  animation: fadeInUp .45s ease-out .1s forwards;
+  max-width: 700px;
+  white-space: normal;
+}
+
+/* Blue flame for Bold */
+.path-title.bold::before {
+  content: "🔥";
+  font-size: 26px;
+  position: absolute;
+  left: -38px;
+  top: 2px;
+  opacity: .9;
+}
+
+/* Green shield for Conservative */
+.path-title.cons::before {
+  content: "🛡️";
+  font-size: 23px;
+  position: absolute;
+  left: -38px;
+  top: 3px;
+  opacity: .9;
+}
+
+/* Cinematic gradient underline */
+.path-title::after {
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:-6px;
+  transform:translateX(-50%);
+  width: 60%;
+  height: 3px;
+  border-radius: 999px;
+}
+
+.path-title.bold::after {
+  background: linear-gradient(90deg,
+    rgba(135,180,255,0) 0%,
+    rgba(135,180,255,1) 50%,
+    rgba(135,180,255,0) 100%
+  );
+}
+
+.path-title.cons::after {
+  background: linear-gradient(90deg,
+    rgba(124,240,138,0) 0%,
+    rgba(124,240,138,1) 50%,
+    rgba(124,240,138,0) 100%
+  );
+}
+
+@keyframes fadeInUp {
+  0% { opacity:0; transform:translateY(10px); }
+  100% { opacity:1; transform:translateY(0); }
+}
   /* ======================================================
    Dynamic Slider Theme (Bold ↔ Conservative)
    ====================================================== */
@@ -724,6 +804,7 @@ function renderSlider(range, path){
 /* ========= Decision UI ========= */
 function resetDecisionUI(){
   chosenPath = null;
+
   elConsBtn.classList.remove('selected');
   elBoldBtn.classList.remove('selected');
   elChoiceRow.style.display = 'flex';
@@ -733,9 +814,12 @@ function resetDecisionUI(){
   sliderInput = null;
   elCard.classList.remove('bold-mode','cons-mode');
 
-  // Restore scenario headline + context
+  // Restore original scenario UI
   if (currentScenario) {
+    elTitle.className = 'headline';
     elTitle.textContent = `Founders · ${currentScenario.focus || ''}`;
+
+    elDesc.className = 'type';
     elDesc.textContent = currentScenario.context || '';
   }
 }
@@ -744,7 +828,7 @@ function choosePath(path, range){
   chosenPath = path;
   elChoiceRow.style.display = 'none';
 
-  // Assign mode classes
+  // Mode classes
   if (path === 'bold'){
     elBoldBtn.classList.add('selected');
     elConsBtn.classList.remove('selected');
@@ -757,15 +841,19 @@ function choosePath(path, range){
     elCard.classList.remove('bold-mode');
   }
 
-  // Replace headline + description with path prompts
+  // Replace UI headline + description
   if (currentScenario) {
-    if (path === 'bold') {
-      elTitle.textContent = "Bold Path";
-      elDesc.textContent = currentScenario.boldPrompt || "";
-    } else {
-      elTitle.textContent = "Conservative Path";
-      elDesc.textContent = currentScenario.conservativePrompt || "";
-    }
+    elTitle.classList.remove('headline');
+    elTitle.className = 'path-title ' + (path === 'bold' ? 'bold' : 'cons');
+
+    elTitle.textContent = path === 'bold'
+      ? "Bold Path"
+      : "Conservative Path";
+
+    elDesc.className = 'path-desc';
+    elDesc.textContent = path === 'bold'
+      ? currentScenario.boldPrompt || ""
+      : currentScenario.conservativePrompt || "";
   }
 
   renderSlider(range, path);
