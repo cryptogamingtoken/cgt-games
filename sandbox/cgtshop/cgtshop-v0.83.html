@@ -702,11 +702,18 @@ function renderSlider(range, path){
   wrap.appendChild(input);
 
   // Conservative path: visually reverse slider
-  if (path === 'conservative'){
-    wrap.style.transform = 'scaleX(-1)';
-  } else {
-    wrap.style.transform = 'none';
-  }
+  if (path === 'conservative') {
+  wrap.style.transform = 'scaleX(-1)';
+
+  // 🩹 FIX: reverse gradient back to normal direction
+  input.style.direction = 'rtl';
+
+} else {
+  wrap.style.transform = 'none';
+
+  // Ensure bold uses default behaviour
+  input.style.direction = 'ltr';
+}
 
   elSliderBlock.appendChild(labelRow);
   elSliderBlock.appendChild(wrap);
