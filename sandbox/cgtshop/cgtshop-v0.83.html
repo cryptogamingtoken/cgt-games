@@ -484,11 +484,27 @@
   animation: fadeInUp .45s ease-out forwards;
 }
 
+/* BOLD PATH — lightning + gold */
 .outcome-title.bold {
-  color: var(--bold-gold);
+  color: #F3BD12 !important;
 }
-.outcome-title.cons {
-  color: var(--cons-purple);
+
+.outcome-title.bold::before {
+  content: "⚡";
+  font-size: 26px;
+  margin-right: 6px;
+  opacity: 0.95;
+}
+/* CONSERVATIVE PATH — shield + purple */
+.outcome-title.conservative {
+  color: #9f6cff !important;
+}
+
+.outcome-title.conservative::before {
+  content: "🛡️";
+  font-size: 26px;
+  margin-right: 6px;
+  opacity: 0.95;
 }
 
 .outcome-sub {
