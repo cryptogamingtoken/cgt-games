@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>CGTShop v0.83</title>
 <style>
-  :root{
+    :root{
     --bg:#0a0f14;
     --surface:#0f1620;
     --ink:#e6edf3;
@@ -14,8 +14,13 @@
     --good:#7cf08a;
     --bad:#ff8a8a;
     --hint:#c8d6e5;
-    --bold-track:linear-gradient(to right, rgba(135,180,255,.8), rgba(135,180,255,0));
-    --cons-track:linear-gradient(to right, rgba(124,240,138,.8), rgba(124,240,138,0));
+
+    /* GOLD / PURPLE THEME */
+    --bold-gold:#F3BD12;
+    --cons-purple:#9F6CFF;
+
+    --bold-track:linear-gradient(to right, rgba(243,189,18,.85), rgba(243,189,18,0));
+    --cons-track:linear-gradient(to right, rgba(159,108,255,.85), rgba(159,108,255,0));
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -157,11 +162,11 @@
     text-align:center;
     font-weight:700;
   }
-  .btn.choice.cons{
-    border-color:rgba(124,240,138,.6);
+    .btn.choice.cons{
+    border-color:rgba(159,108,255,.9);
   }
   .btn.choice.bold{
-    border-color:rgba(135,180,255,.6);
+    border-color:rgba(243,189,18,.95);
   }
   .btn.choice.selected{
     box-shadow:0 0 0 2px rgba(255,255,255,.15) inset;
@@ -407,9 +412,9 @@
   white-space: normal;
 }
 
-/* Blue flame for Bold */
+/* ⚡ Lightning for Bold */
 .path-title.bold::before {
-  content: "🔥";
+  content: "⚡️";
   font-size: 26px;
   position: absolute;
   left: -38px;
@@ -417,7 +422,7 @@
   opacity: .9;
 }
 
-/* Green shield for Conservative */
+/* 🛡️ Shield for Conservative */
 .path-title.cons::before {
   content: "🛡️";
   font-size: 23px;
@@ -441,18 +446,26 @@
 
 .path-title.bold::after {
   background: linear-gradient(90deg,
-    rgba(135,180,255,0) 0%,
-    rgba(135,180,255,1) 50%,
-    rgba(135,180,255,0) 100%
+    rgba(243,189,18,0) 0%,
+    rgba(243,189,18,1) 50%,
+    rgba(243,189,18,0) 100%
   );
 }
 
 .path-title.cons::after {
   background: linear-gradient(90deg,
-    rgba(124,240,138,0) 0%,
-    rgba(124,240,138,1) 50%,
-    rgba(124,240,138,0) 100%
+    rgba(159,108,255,0) 0%,
+    rgba(159,108,255,1) 50%,
+    rgba(159,108,255,0) 100%
   );
+}
+
+.path-title.bold {
+  color: var(--bold-gold);
+}
+
+.path-title.cons {
+  color: var(--cons-purple);
 }
 
 @keyframes fadeInUp {
@@ -472,10 +485,10 @@
 }
 
 .outcome-title.bold {
-  color: rgba(135,180,255,1);
+  color: var(--bold-gold);
 }
 .outcome-title.cons {
-  color: rgba(124,240,138,1);
+  color: var(--cons-purple);
 }
 
 .outcome-sub {
@@ -518,31 +531,31 @@
    TRACK gradients
    =========================== */
 
-/* Conservative = fade to the LEFT (green) */
+/* Conservative = fade to the LEFT (purple) */
 .card.cons-mode input[type="range"]::-webkit-slider-runnable-track {
   background: linear-gradient(to left,
-    rgba(124,240,138,0.9),
-    rgba(124,240,138,0)
+    rgba(159,108,255,0.9),
+    rgba(159,108,255,0)
   );
 }
 .card.cons-mode input[type="range"]::-moz-range-track {
-  background: linear-gradient(to right,
-    rgba(124,240,138,0.9),
-    rgba(124,240,138,0)
+  background: linear-gradient(to left,
+    rgba(159,108,255,0.9),
+    rgba(159,108,255,0)
   );
 }
 
-/* Bold = fade to the LEFT (blue) */
+/* Bold = fade to the LEFT (gold) */
 .card.bold-mode input[type="range"]::-webkit-slider-runnable-track {
   background: linear-gradient(to left,
-    rgba(135,180,255,0.9),
-    rgba(135,180,255,0)
+    rgba(243,189,18,0.9),
+    rgba(243,189,18,0)
   );
 }
 .card.bold-mode input[type="range"]::-moz-range-track {
   background: linear-gradient(to left,
-    rgba(135,180,255,0.9),
-    rgba(135,180,255,0)
+    rgba(243,189,18,0.9),
+    rgba(243,189,18,0)
   );
 }
 
@@ -550,20 +563,20 @@
    THUMB colors
    =========================== */
 
-/* Conservative thumb = green */
+/* Conservative thumb = purple */
 .card.cons-mode input[type="range"]::-webkit-slider-thumb {
-  background: rgba(124,240,138,1);
+  background: var(--cons-purple);
 }
 .card.cons-mode input[type="range"]::-moz-range-thumb {
-  background: rgba(124,240,138,1);
+  background: var(--cons-purple);
 }
 
-/* Bold thumb = blue */
+/* Bold thumb = gold */
 .card.bold-mode input[type="range"]::-webkit-slider-thumb {
-  background: rgba(135,180,255,1);
+  background: var(--bold-gold);
 }
 .card.bold-mode input[type="range"]::-moz-range-thumb {
-  background: rgba(135,180,255,1);
+  background: var(--bold-gold);
 }
 
 /* ===========================
@@ -574,11 +587,11 @@
 }
 
 .card.bold-mode {
-  box-shadow: 0 0 24px rgba(135,180,255,0.28);
+  box-shadow: 0 0 24px rgba(243,189,18,0.33);
 }
 
 .card.cons-mode {
-  box-shadow: 0 0 24px rgba(124,240,138,0.28);
+  box-shadow: 0 0 24px rgba(159,108,255,0.33);
 }
 /* Completely remove title/desc space during outcome */
 .vanish {
@@ -640,11 +653,11 @@
 
 /* 3. Dynamic glow behind the entire card */
 .card.outcome-mode.bold {
-  box-shadow: 0 0 38px rgba(135,180,255,0.22) !important;
+  box-shadow: 0 0 38px rgba(243,189,18,0.26) !important;
 }
 
 .card.outcome-mode.cons {
-  box-shadow: 0 0 38px rgba(124,240,138,0.22) !important;
+  box-shadow: 0 0 38px rgba(159,108,255,0.26) !important;
 }
 
 /* 4. Slightly lift the result box for better composition */
@@ -903,7 +916,43 @@ function renderSlider(range, path){
   input.addEventListener('input', updateLabel);
   updateLabel();
   wrap.appendChild(input);
+  // Tap-anywhere-to-set slider value
+  wrap.addEventListener('click', (e) => {
+    // If user taps directly on the thumb, let the native drag behaviour handle it
+    if (e.target === input) return;
 
+    const rect = input.getBoundingClientRect();
+    let ratio = (e.clientX - rect.left) / rect.width;
+
+    // Clamp between 0 and 1
+    if (ratio < 0) ratio = 0;
+    if (ratio > 1) ratio = 1;
+
+    // Slider is visually mirrored for conservative path,
+    // so reverse the ratio so tap position feels intuitive.
+    if (path === 'conservative') {
+      ratio = 1 - ratio;
+    }
+
+    const min = parseFloat(range.min);
+    const max = parseFloat(range.max);
+    const step = parseFloat(range.step);
+
+    let value = min + ratio * (max - min);
+
+    // Snap to step
+    if (step > 0) {
+      value = Math.round(value / step) * step;
+    }
+
+    input.value = value.toFixed(1);
+    updateLabel();
+
+    // Fire an input event so any listeners stay in sync
+    const evt = new Event('input', { bubbles: true });
+    input.dispatchEvent(evt);
+  });
+  
   // Conservative path: visually reverse slider
   if (path === 'conservative'){
     wrap.style.transform = 'scaleX(-1)';
