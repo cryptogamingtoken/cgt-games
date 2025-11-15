@@ -1025,14 +1025,14 @@ function applyOutcome(isFavourable, mult, text, scenario){
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   hasOutcomeShown = true;
 
-  // add shift class
-  document.querySelector('.stage').classList.add('outcome-shift');
-
   // Hide the main scenario header during outcome
-elTitle.classList.add('vanish');
-elDesc.classList.add('vanish');
-elCard.classList.add('outcome-mode');
+  elTitle.classList.add('vanish');
+  elDesc.classList.add('vanish');
+  elCard.classList.add('outcome-mode');
+
+  // Hide panel completely so it doesn't reserve vertical space
   elControls.style.opacity = 0;
+  elControls.style.display = 'none';
 
   elBigMsg.className = 'bigMsg ' + (isFavourable ? 'good' : 'bad');
   const line1 = chosenPath === 'bold' ? 'Bold move' : 'Conservative move';
