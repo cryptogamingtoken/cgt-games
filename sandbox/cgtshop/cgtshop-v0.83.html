@@ -685,6 +685,16 @@
 .card.outcome-mode {
   padding-top: 28px !important;
 }
+/* Custom icons for Bold (⚡) and Conservative (🛡️) */
+.icon-bold {
+  color: #F3BD12;
+  margin-right: 6px;
+}
+
+.icon-cons {
+  color: #9F6CFF;
+  margin-right: 6px;
+}
 </style>
 </head>
 <body>
@@ -1165,7 +1175,11 @@ if (chosenPath === 'bold') {
   const line2 = isFavourable ? 'Favourable outcome' : 'Unfavourable outcome';
   elBigMsg.innerHTML = `
   <div class="outcome-title ${chosenPath}">
-    ${chosenPath === 'bold' ? '🔥 Bold Path' : '🛡️ Conservative Path'}
+    ${
+      chosenPath === 'bold'
+        ? '<span class="icon-bold">⚡</span> Bold Path'
+        : '<span class="icon-cons">🛡️</span> Conservative Path'
+    }
   </div>
   <div class="outcome-sub ${isFavourable ? 'good' : 'bad'}">
     ${isFavourable ? 'Favourable Outcome' : 'Unfavourable Outcome'}
