@@ -1157,58 +1157,61 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   elTitle.classList.add('vanish');
   elDesc.classList.add('vanish');
   elCard.classList.add('outcome-mode');
+  // Premium glow depending on choice
+if (chosenPath === 'bold') {
+  elCard.classList.add('bold');
+  elCard.classList.remove('cons');
+} else {
+  elCard.classList.add('cons');
+  elCard.classList.remove('bold');
+}
 
-  // Apply glow mode
-  if (chosenPath === 'bold') {
-    elCard.classList.add('bold');
-    elCard.classList.remove('cons');
-  } else {
-    elCard.classList.add('cons');
-    elCard.classList.remove('bold');
-  }
-
-  // Hide choice controls
+  // Hide panel completely so it doesn't reserve vertical space
   elControls.style.opacity = 0;
   elControls.style.display = 'none';
 
-  // TITLE + SUBTITLE + DESCRIPTION (no icons here)
-  const titleText = chosenPath === 'bold' ? 'Bold Path' : 'Conservative Path';
-  const subText = isFavourable ? 'Favourable Outcome' : 'Unfavourable Outcome';
-
   elBigMsg.className = 'bigMsg ' + (isFavourable ? 'good' : 'bad');
+  const line1 = chosenPath === 'bold' ? 'Bold move' : 'Conservative move';
+  const line2 = isFavourable ? 'Favourable outcome' : 'Unfavourable outcome';
   elBigMsg.innerHTML = `
-      <div class="outcome-title ${chosenPath}">${titleText}</div>
-      <div class="outcome-sub ${isFavourable ? 'good' : 'bad'}">${subText}</div>
-      <div class="outcome-desc">${text}</div>
+  <div class="outcome-title ${chosenPath}">
+    ${
+      chosenPath === 'bold'
+        ? '<span class="icon-bold">⚡</span> Bold Path'
+        : '<span class="icon-cons">🛡️</span> Conservative Path'
+    }
+  </div>
+  <div class="outcome-sub ${isFavourable ? 'good' : 'bad'}">
+    ${isFavourable ? 'Favourable Outcome' : 'Unfavourable Outcome'}
+  </div>
+  <div class="outcome-desc">
+    ${text}
+  </div>
+`;
+
+  elOutcomeWrap.style.display = 'block';
+  // PREMIUM PACK — animate outcome wrap
+requestAnimationFrame(() => {
+  elOutcomeWrap.classList.add('show');
+});
+  const cls = isFavourable ? 'goodBox' : 'badBox';
+  elOutcomeBox.className = 'outcome ' + cls;
+
+  // percentage purely from multiplier (5.0× -> ±500%)
+  const pctAbs = mult * 100;
+  const pctStr = (isFavourable ? '+' : '-') + pctAbs.toFixed(0) + '%';
+
+  const priceLine = `Price: <b>${fmtUSD(oldMC/SUPPLY,8)}</b> → <b>${fmtUSD(price,8)}</b>`;
+  const mcLine = `Market Cap: <b>${fmtUSD(oldMC)}</b> → <b>${fmtUSD(newMC)}</b>`;
+  const focusLine = scenario ? `<div class="muted" style="margin-top:10px;">${scenario.focus || ''}</div>` : '';
+
+  elOutcomeBox.innerHTML = `
+    <div class="big">${isFavourable ? 'Gain' : 'Loss'} &nbsp; (${pctStr})</div>
+    <div>${priceLine}</div>
+    <div class="muted">${mcLine}</div>
+    ${focusLine}
   `;
 
-  // Show wrapper + animate
-  elOutcomeWrap.style.display = 'block';
-  requestAnimationFrame(() => elOutcomeWrap.classList.add('show'));
-
-  // Outcome box (gain/loss)
-  const pct = (mult * 100).toFixed(0);
-  const pctStr = (isFavourable ? '+' : '-') + pct + '%';
-
-  const priceLine =
-    `Price: <b>${fmtUSD(oldMC/SUPPLY,8)}</b> → <b>${fmtUSD(price,8)}</b>`;
-
-  const mcLine =
-    `Market Cap: <b>${fmtUSD(oldMC)}</b> → <b>${fmtUSD(newMC)}</b>`;
-
-  const focusLine = scenario && scenario.focus
-    ? `<div class="muted" style="margin-top:10px;">${scenario.focus}</div>`
-    : '';
-
-  elOutcomeBox.className = 'outcome ' + (isFavourable ? 'goodBox' : 'badBox');
-  elOutcomeBox.innerHTML = `
-        <div class="big">${isFavourable ? 'Gain' : 'Loss'} (${pctStr})</div>
-        <div>${priceLine}</div>
-        <div class="muted">${mcLine}</div>
-        ${focusLine}
-    `;
-
-  // Restart vs next day
   if (price <= 0){
     elNext.style.display = 'none';
     elRestart.style.display = 'inline-block';
@@ -1217,7 +1220,7 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
     elRestart.style.display = 'none';
   }
 
-  updateHUD();
+  updateHUD();”
 }
   /* PREMIUM PACK — auto scroll to center outcome on mobile
 setTimeout(() => {
