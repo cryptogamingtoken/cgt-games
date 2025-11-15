@@ -606,6 +606,56 @@
   align-items: flex-start !important;
   padding-top: 32px !important;
 }
+/* ===========================================
+   PREMIUM PACK — CINEMATIC UPGRADES
+   =========================================== */
+
+/* 1. Tighter vertical spacing */
+.outcome-title {
+  margin-top: 4px !important;
+  margin-bottom: 2px !important;
+}
+
+.outcome-sub {
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+.outcome-desc {
+  margin-top: 8px !important;
+}
+
+/* 2. Fade + scale animation for the whole outcome box */
+#outcomeWrap {
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity .45s ease-out, transform .45s ease-out;
+}
+
+/* Activated state */
+#outcomeWrap.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 3. Dynamic glow behind the entire card */
+.card.outcome-mode.bold {
+  box-shadow: 0 0 38px rgba(135,180,255,0.22) !important;
+}
+
+.card.outcome-mode.cons {
+  box-shadow: 0 0 38px rgba(124,240,138,0.22) !important;
+}
+
+/* 4. Slightly lift the result box for better composition */
+.outcome {
+  margin-top: 14px !important;
+}
+
+/* 5. Reduce dead-space at top of outcome view */
+.card.outcome-mode {
+  padding-top: 28px !important;
+}
 </style>
 </head>
 <body>
@@ -1032,6 +1082,14 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   elTitle.classList.add('vanish');
   elDesc.classList.add('vanish');
   elCard.classList.add('outcome-mode');
+  // Premium glow depending on choice
+if (chosenPath === 'bold') {
+  elCard.classList.add('bold');
+  elCard.classList.remove('cons');
+} else {
+  elCard.classList.add('cons');
+  elCard.classList.remove('bold');
+}
 
   // Hide panel completely so it doesn't reserve vertical space
   elControls.style.opacity = 0;
@@ -1053,6 +1111,10 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
 `;
 
   elOutcomeWrap.style.display = 'block';
+  // PREMIUM PACK — animate outcome wrap
+requestAnimationFrame(() => {
+  elOutcomeWrap.classList.add('show');
+});
   const cls = isFavourable ? 'goodBox' : 'badBox';
   elOutcomeBox.className = 'outcome ' + cls;
 
@@ -1080,11 +1142,18 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   }
 
   updateHUD();
+  // PREMIUM PACK — auto scroll to center outcome on mobile
+setTimeout(() => {
+  const rect = elOutcomeWrap.getBoundingClientRect();
+  const desired = window.pageYOffset + rect.top - 80; 
+  window.scrollTo({ top: desired, behavior: 'smooth' });
+}, 220);
 }
 
 /* ========= Flow ========= */
 function nextDay(){
   if (price <= 0) return;
+  elOutcomeWrap.classList.remove('show');
   elTitle.classList.remove('vanish');
 elDesc.classList.remove('vanish');
 elCard.classList.remove('outcome-mode');
@@ -1095,6 +1164,7 @@ document.querySelector('.stage').classList.remove('outcome-shift');
 }
 
 function restartGame(){
+  elOutcomeWrap.classList.remove('show');
   elTitle.classList.remove('vanish');
 elDesc.classList.remove('vanish');
 elCard.classList.remove('outcome-mode');
