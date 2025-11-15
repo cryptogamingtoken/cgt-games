@@ -1201,7 +1201,7 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   const pctStr = (isFavourable ? '+' : '-') + pctAbs.toFixed(0) + '%';
 
   const priceLine =
-    `Price: <b>${fmtUSD(oldMC/SUPPLY,8)}</b> → <b>${fmtUSD(price,8)}</b>`;
+  `Price: <b>${fmtUSD(oldMC/SUPPLY,8)}</b> → <b>${fmtUSD(newMC/SUPPLY,8)}</b>`;
   const mcLine =
     `Market Cap: <b>${fmtUSD(oldMC)}</b> → <b>${fmtUSD(newMC)}</b>`;
   const focusLine = scenario
