@@ -938,9 +938,12 @@ async function newScenario(){
   hasOutcomeShown = false;
   resetDecisionUI();
 
-  elOutcomeWrap.style.display = 'none';
+    elOutcomeWrap.style.display = 'none';
   elTitle.textContent = 'Loading…';
   elDesc.textContent = '';
+
+  // Restore panel for the new decision
+  elControls.style.display = 'block';
   elControls.style.opacity = 0;
 
   await maybeShowClueBlocking();
