@@ -883,15 +883,19 @@ async function maybeShowClueBlocking(){
 
 /* ========= Bands → slider ranges ========= */
 function getBandRange(subBand){
-  const parts = (subBand || '').split('-'); // e.g. F-B2-0.3
+  const parts = (subBand || '').split('-');
   const bandCode = parts[1] || '';
+
   let max = 3.0;
   if (bandCode === 'B1') max = 5.0;
   else if (bandCode === 'B2') max = 4.0;
   else if (bandCode === 'B3') max = 3.0;
   else if (bandCode === 'B4') max = 2.0;
   else if (bandCode === 'B5') max = 1.0;
-  return {min:0.1, max, step:0.1};
+
+  // NEW: Slider now represents actual × multiplier.
+  // 1.1x = +10%, 5.0x = +400%
+  return {min:1.1, max, step:0.1};
 }
 
 /* ========= Slider rendering ========= */
@@ -1122,25 +1126,27 @@ function resolveDecision(){
   locked = true;
 }
 
-function applyOutcome(isFavourable, mult, text, scenario){
+function applyOutcome(isFavourable, multDisplayed, text, scenario){
   const oldMC = mc();
+
+  // Convert slider number → real multiplier
+  // 1.1 → 1.1x
+  // 5.0 → 5.0x
+  const mult = multDisplayed; // displayed value IS the real multiplier
+
   let newMC;
 
   if (isFavourable){
-    // FAVOURABLE = always increase by (1 + mult)
-    // Example: 10,000 with 0.1 → 11,000  (correct)
-    //          50,000 with 1.0 → 100,000 (correct)
-    newMC = oldMC * (1 + mult);
+    // Favourable = multiply directly
+    newMC = oldMC * mult;
   } else {
-    // UNFAVOURABLE = always decrease by (1 - mult)
-    // Example: 10,000 with 0.1 → 9,000   (correct)
-    //          50,000 with 1.0 → 25,000 (correct)
-    const clamped = Math.min(mult, 0.99); // prevents division by 0
-    newMC = oldMC * (1 - clamped);
+    // Unfavourable = divide by the same multiplier
+    newMC = oldMC / mult;
   }
 
   price = newMC / SUPPLY;
-  showOutcome(isFavourable, mult, text, scenario, oldMC, newMC);
+
+  showOutcome(isFavourable, multDisplayed, text, scenario, oldMC, newMC);
 }
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   hasOutcomeShown = true;
