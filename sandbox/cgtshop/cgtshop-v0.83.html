@@ -1127,16 +1127,21 @@ function applyOutcome(isFavourable, mult, text, scenario){
   let newMC;
 
   if (isFavourable){
-    newMC = oldMC * mult;
+    // FAVOURABLE = always increase by (1 + mult)
+    // Example: 10,000 with 0.1 → 11,000  (correct)
+    //          50,000 with 1.0 → 100,000 (correct)
+    newMC = oldMC * (1 + mult);
   } else {
-    const safeMult = Math.max(mult, 0.1);
-    newMC = oldMC / safeMult;
+    // UNFAVOURABLE = always decrease by (1 - mult)
+    // Example: 10,000 with 0.1 → 9,000   (correct)
+    //          50,000 with 1.0 → 25,000 (correct)
+    const clamped = Math.min(mult, 0.99); // prevents division by 0
+    newMC = oldMC * (1 - clamped);
   }
 
   price = newMC / SUPPLY;
   showOutcome(isFavourable, mult, text, scenario, oldMC, newMC);
 }
-
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   hasOutcomeShown = true;
 
