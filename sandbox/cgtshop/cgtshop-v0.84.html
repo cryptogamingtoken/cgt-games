@@ -1128,20 +1128,56 @@ function resolveDecision(){
 
 function applyOutcome(isFavourable, multDisplayed, text, scenario){
   const oldMC = mc();
-
-  // Convert slider number → real multiplier
-  // 1.1 → 1.1x
-  // 5.0 → 5.0x
-  const mult = multDisplayed; // displayed value IS the real multiplier
+  const mult = multDisplayed;
 
   let newMC;
 
   if (isFavourable){
-    // Favourable = multiply directly
+    /* -----------------------------------------
+       BOLD & CONSERVATIVE — FAVOURABLE:
+       Straight multiplier
+       ----------------------------------------- */
     newMC = oldMC * mult;
+
   } else {
-    // Unfavourable = divide by the same multiplier
-    newMC = oldMC / mult;
+
+    /* ====================================================
+       UNFAVOURABLE OUTCOME — TWO-PART LOGIC
+       ===================================================== */
+
+    if (chosenPath === 'bold') {
+
+      /* -----------------------------------------
+         BOLD — CASE 1: Mult < 2.0 (symmetrical)
+         1.1 → -10%
+         1.5 → -50%
+         1.9 → -90%
+         ------------------------------------------ */
+      if (mult < 2.0){
+        const remaining = (2.0 - mult); // e.g. 1.5 -> 0.5
+        newMC = oldMC * remaining;
+
+      } else {
+
+        /* -----------------------------------------
+           BOLD — CASE 2: Mult >= 2.0 (wipeout curve)
+           2.0 → 80% loss   (20% remains)
+           5.0 → 100% loss  (0% remains)
+           Linear between 2.0 and 5.0
+           ------------------------------------------ */
+        const loss = 0.8 + ( (mult - 2.0) * (0.20 / 3.0) );
+        const remaining = Math.max(0, 1 - loss);
+        newMC = oldMC * remaining;
+      }
+
+    } else {
+
+      /* -----------------------------------------
+         CONSERVATIVE — symmetrical loss
+         (already correct for this version)
+         ------------------------------------------ */
+      newMC = oldMC / mult;
+    }
   }
 
   price = newMC / SUPPLY;
