@@ -740,6 +740,13 @@
       <span>🎲 Favourable bias</span>
       <span id="biasValue" class="bias-value">80%</span>
     </div>
+    <!-- TEST MODE TOGGLE -->
+<div style="margin-bottom:8px;">
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+    <input type="checkbox" id="testModeToggle" style="transform:scale(1.2);">
+    <span><b>Test Mode</b> — use slider probability</span>
+  </label>
+</div>
     <input type="range" id="biasSlider" min="10" max="90" step="5" value="80">
     <div class="muted" style="margin-top:4px;">Two-finger tap (or press “B”) to toggle this during testing.</div>
     <div class="meta"><b>Ref:</b> <span id="metaRef">—</span></div>
@@ -749,6 +756,17 @@
 
   
 <script>
+/* ========= Test Mode ========= */
+window.TEST_MODE = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const tgl = document.querySelector('#testModeToggle');
+  if (tgl) {
+    tgl.addEventListener('change', e => {
+      window.TEST_MODE = e.target.checked;
+    });
+  }
+});
 /* ========= Core state ========= */
 const SUPPLY = 350_000_000;
 let day = 1;
@@ -1112,7 +1130,15 @@ function resolveDecision(){
   let mult = parseFloat(sliderInput.value || range.min);
   mult = Math.max(range.min, Math.min(range.max, mult));
 
-  const isFavourable = Math.random() < (bias / 100);
+  let isFavourable;
+
+if (window.TEST_MODE === true) {
+  // Test Mode — raw slider value only
+  isFavourable = Math.random() < (bias / 100);
+} else {
+  // Normal game logic (curve/band/tone will be added here later)
+  isFavourable = Math.random() < (bias / 100);
+}
   const s = currentScenario;
 
   let outcomeText = '';
