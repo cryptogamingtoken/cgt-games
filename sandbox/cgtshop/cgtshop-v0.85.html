@@ -933,19 +933,6 @@ function getBandRange(subBand, path){
   };
 }
 
-  // Bold slider still uses band-coded max values
-  const parts = (subBand || '').split('-');
-  const bandCode = parts[1] || '';
-
-  let max = 3.0;
-  if (bandCode === 'B1') max = 5.0;
-  else if (bandCode === 'B2') max = 4.0;
-  else if (bandCode === 'B3') max = 3.0;
-  else if (bandCode === 'B4') max = 2.0;
-  else if (bandCode === 'B5') max = 1.0;
-
-  return { min: 1.1, max, step: 0.1 };
-}
 
 /* ========= Slider rendering ========= */
 function renderSlider(range, path){
