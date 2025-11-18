@@ -1157,61 +1157,84 @@ if (window.TEST_MODE === true) {
 function applyOutcome(isFavourable, multDisplayed, text, scenario){
   const oldMC = mc();
   const mult = multDisplayed;
+  let newMC = oldMC;
 
-  let newMC;
-
+  /* ======================================================
+     FAVOURABLE OUTCOMES
+     ====================================================== */
   if (isFavourable){
-    /* -----------------------------------------
-       BOLD & CONSERVATIVE — FAVOURABLE:
-       Straight multiplier
-       ----------------------------------------- */
-    newMC = oldMC * mult;
 
-  } else {
+    /* =============================
+       CONSERVATIVE JACKPOT LOGIC
+       ============================= */
+    if (chosenPath === 'conservative') {
 
-    /* ====================================================
-       UNFAVOURABLE OUTCOME — TWO-PART LOGIC
-       ===================================================== */
+      // 1) Base gain (normal favourable math)
+      const baseGain = oldMC * (mult - 1); // 1.30 => +0.30
 
-    if (chosenPath === 'bold') {
+      // Convert slider to slice index 0–7 (C1–C8)
+      // Conservative slider is 0.10 → 0.80
+      const frac = (mult - 0.10) / 0.70;
+      let sliceIndex = Math.floor(frac * 8);
+      sliceIndex = Math.max(0, Math.min(7, sliceIndex));
 
-      /* -----------------------------------------
-         BOLD — CASE 1: Mult < 2.0 (symmetrical)
-         1.1 → -10%
-         1.5 → -50%
-         1.9 → -90%
-         ------------------------------------------ */
-      if (mult < 2.0){
-        const remaining = (2.0 - mult); // e.g. 1.5 -> 0.5
-        newMC = oldMC * remaining;
+      const jackpotChances = [25,22,20,18,17,16,15,14]; // percent
+
+      const jpRoll = Math.random() * 100;
+      const jpThreshold = jackpotChances[sliceIndex];
+
+      if (jpRoll < jpThreshold){
+
+        // Determine jackpot tier
+        const tierRoll = Math.random() * 100;
+        let tier = 2;
+
+        if (tierRoll < 10)       tier = 25; // 10%
+        else if (tierRoll < 30)  tier = 10; // next 20%
+        else if (tierRoll < 60)  tier = 5;  // next 30%
+        else                     tier = 2;  // final 40%
+
+        const jackpotBonus = baseGain * tier;
+        newMC = oldMC + baseGain + jackpotBonus;
 
       } else {
+        // No jackpot → normal conservative favourable
+        newMC = oldMC * mult;
+      }
 
-        /* -----------------------------------------
-           BOLD — CASE 2: Mult >= 2.0 (wipeout curve)
-           2.0 → 80% loss   (20% remains)
-           5.0 → 100% loss  (0% remains)
-           Linear between 2.0 and 5.0
-           ------------------------------------------ */
-        const loss = 0.8 + ( (mult - 2.0) * (0.20 / 3.0) );
+    } else {
+      /* =============================
+         NORMAL BOLD FAVOURABLE
+         ============================= */
+      newMC = oldMC * mult;
+    }
+
+  } else {
+    /* ======================================================
+       UNFAVOURABLE OUTCOMES
+       (unchanged — jackpots never apply here)
+       ====================================================== */
+    if (chosenPath === 'bold') {
+
+      if (mult < 2.0){
+        const remaining = (2.0 - mult);
+        newMC = oldMC * remaining;
+      } else {
+        const loss = 0.8 + ((mult - 2.0) * (0.20 / 3.0));
         const remaining = Math.max(0, 1 - loss);
         newMC = oldMC * remaining;
       }
 
     } else {
-
-      /* -----------------------------------------
-         CONSERVATIVE — symmetrical loss
-         (already correct for this version)
-         ------------------------------------------ */
+      // conservative symmetrical loss
       newMC = oldMC / mult;
     }
   }
 
   price = newMC / SUPPLY;
-
   showOutcome(isFavourable, multDisplayed, text, scenario, oldMC, newMC);
 }
+
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   hasOutcomeShown = true;
 
