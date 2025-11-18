@@ -185,8 +185,3 @@ window.CGT_SCENARIOS.founder = [
 
 ];
 
-/* Debug confirmation */
-document.body.insertAdjacentHTML(
-  'beforeend',
-  '<div style="color:#0f0;font-size:14px;margin-top:10px;">✅ founder-data.js executed</div>'
-);
