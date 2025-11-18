@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>CGTShop v0.85</title>
+<title>CGTShop v0.851</title>
 <style>
     :root{
     --bg:#0a0f14;
@@ -682,6 +682,8 @@
   color: #9F6CFF;
   margin-right: 6px;
 }
+/* ==== ANTI-HORIZONTAL SHIFT FIX (FINAL) ==== */
+
 html, body {
   overflow-x: hidden !important;
   width: 100% !important;
@@ -689,7 +691,15 @@ html, body {
 }
 
 .card {
+  position: relative;
   overflow-x: hidden !important;
+}
+
+/* Prevent slider transforms from widening container */
+.sliderWrap {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 </style>
 </head>
