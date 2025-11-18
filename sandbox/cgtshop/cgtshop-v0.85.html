@@ -694,8 +694,9 @@ html, body {
 </style>
 </head>
 <body>
-  <!-- Founder scenarios data -->
-  <script src="founder-data.js"></script>
+  <!-- setting @ stakeholder data -->
+<script src="cgtshop-tuning.js"></script>
+<script src="founder-data.js"></script>
   
   <header>
     <div class="hud">
@@ -911,10 +912,26 @@ async function maybeShowClueBlocking(){
 
 /* ========= Bands → slider ranges ========= */
 function getBandRange(subBand, path){
-  if (path === 'conservative') {
-    // Conservative slider: 0.10 → 0.80 → interpreted as ±10–80%
-    return { min: 0.10, max: 0.80, step: 0.01 };
+  const T = window.CGT_TUNING;
+
+  if (path === 'conservative'){
+    return {
+      min: T.sliders.conservative.min,
+      max: T.sliders.conservative.max,
+      step: T.sliders.conservative.step
+    };
   }
+
+  const parts = (subBand || '').split('-');
+  const bandCode = parts[1] || '';
+  const max = T.boldBandCaps[bandCode] || 3.0;
+
+  return {
+    min: T.sliders.bold.min,
+    max,
+    step: T.sliders.bold.step
+  };
+}
 
   // Bold slider still uses band-coded max values
   const parts = (subBand || '').split('-');
@@ -1132,29 +1149,40 @@ function resolveDecision(){
 
   let isFavourable;
 
-  if (window.TEST_MODE === true) {
-    isFavourable = Math.random() < (bias / 100);
-  } else {
-    if (chosenPath === "conservative") {
-      // 0.10 → 0.80 mapped to 8 slices
-      const frac = (mult - 0.10) / 0.70;
-      let slice = Math.floor(frac * 8);
-      slice = Math.max(0, Math.min(7, slice));
-      const consProbs = [85, 82, 79, 76, 73, 70, 68, 65];
-      const p = consProbs[slice] / 100;
-      isFavourable = Math.random() < p;
-    } else {
-      // Bold: 1.1 → 5.0 mapped to 39 slices (80% → 50%)
-      const frac = (mult - 1.1) / (5.0 - 1.1);
-      let slice = Math.floor(frac * 39);
-      slice = Math.max(0, Math.min(38, slice));
-      const boldStart = 80;
-      const boldEnd   = 50;
-      const step = (boldStart - boldEnd) / 38;
-      const p = (boldStart - slice * step) / 100;
-      isFavourable = Math.random() < p;
-    }
-  }
+  /* ======================================================
+   FINAL PROBABILITY LOGIC — v0.85 (Tuning-based)
+====================================================== */
+
+const T = window.CGT_TUNING;
+
+if (window.TEST_MODE){
+  isFavourable = Math.random() < (bias / 100);
+}
+else if (chosenPath === 'conservative'){
+  
+  const frac = (mult - T.sliders.conservative.min) /
+               (T.sliders.conservative.max - T.sliders.conservative.min);
+
+  let slice = Math.floor(frac * T.conservativeProbabilities.slices);
+  slice = Math.max(0, Math.min(T.conservativeProbabilities.slices - 1, slice));
+
+  const p = T.conservativeProbabilities.percents[slice] / 100;
+  isFavourable = Math.random() < p;
+}
+else {
+  // bold
+  const frac = (mult - T.sliders.bold.min) /
+               (T.boldLoss.wipeoutEndMult - T.sliders.bold.min);
+
+  let slice = Math.floor(frac * T.boldProbabilities.slices);
+  slice = Math.max(0, Math.min(T.boldProbabilities.slices - 1, slice));
+
+  const step = (T.boldProbabilities.start - T.boldProbabilities.end) /
+               (T.boldProbabilities.slices - 1);
+
+  const p = (T.boldProbabilities.start - slice * step) / 100;
+  isFavourable = Math.random() < p;
+}
 
   const s = currentScenario;
   let outcomeText = '';
