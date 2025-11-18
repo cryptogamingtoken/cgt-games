@@ -1219,27 +1219,32 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
       let sliceIndex = Math.floor(frac * 8);
       sliceIndex = Math.max(0, Math.min(7, sliceIndex));
 
-      const jackpotChances = [25,22,20,18,17,16,15,14]; // %
+    /* === Jackpot logic from tuning file === */
+const JC = window.CGT_TUNING.jackpotConservative;
 
-      const jpRoll = Math.random() * 100;
-      const jpThreshold = jackpotChances[sliceIndex];
+const sliceCount = JC.chances.length;
+const frac2 = (mult - 0.10) / 0.70;
+let i = Math.floor(frac2 * sliceCount);
+i = Math.max(0, Math.min(sliceCount - 1, i));
 
-      if (jpRoll < jpThreshold){
-        const tierRoll = Math.random() * 100;
-        let tier = 2;
-        if (tierRoll < 10)       tier = 25;
-        else if (tierRoll < 30)  tier = 10;
-        else if (tierRoll < 60)  tier = 5;
-        else                     tier = 2;
+const chance = JC.chances[i];
+const roll = Math.random() * 100;
 
-        tierUsed = tier;
+if (roll < chance){
+  const tierRoll = Math.random() * 100;
+  let tier = 2;
+  if (tierRoll < JC.distribution[25]) tier = 25;
+  else if (tierRoll < JC.distribution[25] + JC.distribution[10]) tier = 10;
+  else if (tierRoll < JC.distribution[25] + JC.distribution[10] + JC.distribution[5]) tier = 5;
+  else tier = 2;
 
-        const bonus = baseGain * tier;
-        newMC = oldMC + baseGain + bonus;
-      } else {
-        // normal conservative favourable
-        newMC = oldMC + baseGain;
-      }
+  tierUsed = tier;
+
+  const bonus = baseGain * tier;
+  newMC = oldMC + baseGain + bonus;
+} else {
+  newMC = oldMC + baseGain;
+}
 
     } else {
       // Bold favourable: direct multiplier
@@ -1253,11 +1258,23 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
       if (mult < 2.0){
         const remaining = (2.0 - mult);
         newMC = oldMC * remaining;
-      } else {
-        const loss = 0.8 + ((mult - 2.0) * (0.20 / 3.0));
-        const remaining = Math.max(0, 1 - loss);
-        newMC = oldMC * remaining;
-      }
+      } } else {
+  /* ===========================================================
+     BOLD LOSS — Tuning-driven wipeout curve (from tuning file)
+  ============================================================ */
+  const L = window.CGT_TUNING.boldLoss;
+
+  const t = (mult - L.wipeoutStartMult) /
+            (L.wipeoutEndMult - L.wipeoutStartMult);
+
+  const tt = Math.max(0, Math.min(1, t));
+
+  const loss = L.startLoss + (L.endLoss - L.startLoss) * tt;
+
+  const remaining = Math.max(0, 1 - loss);
+
+  newMC = oldMC * remaining;
+}
     } else {
       // Conservative symmetrical loss: -10% … -80%
       const lossPct = mult;
