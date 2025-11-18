@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>CGTShop v0.83</title>
+<title>CGTShop v0.84</title>
 <style>
     :root{
     --bg:#0a0f14;
@@ -1284,66 +1284,75 @@ if (!isFinite(price) || price < 0) price = 0;
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   hasOutcomeShown = true;
 
-  // Hide the main scenario header during outcome
+  /* ====== FIX #1: Correct Gain/Loss detection ====== */
+  const mcDiff = newMC - oldMC;
+  const pctChange = (mcDiff / oldMC) * 100;
+  const isGain = mcDiff >= 0;
+
+  const pctStr = (isGain ? "+" : "") + pctChange.toFixed(0) + "%";
+
+  /* ====== UI State Updates (unchanged) ====== */
   elTitle.classList.add('vanish');
   elDesc.classList.add('vanish');
   elCard.classList.add('outcome-mode');
-  // Premium glow depending on choice
-if (chosenPath === 'bold') {
-  elCard.classList.add('bold');
-  elCard.classList.remove('cons');
-} else {
-  elCard.classList.add('cons');
-  elCard.classList.remove('bold');
-}
 
-  // Hide panel completely so it doesn't reserve vertical space
+  if (chosenPath === 'bold') {
+    elCard.classList.add('bold');
+    elCard.classList.remove('cons');
+  } else {
+    elCard.classList.add('cons');
+    elCard.classList.remove('bold');
+  }
+
   elControls.style.opacity = 0;
   elControls.style.display = 'none';
 
-  elBigMsg.className = 'bigMsg ' + (isFavourable ? 'good' : 'bad');
-  const line1 = chosenPath === 'bold' ? 'Bold move' : 'Conservative move';
-  const line2 = isFavourable ? 'Favourable outcome' : 'Unfavourable outcome';
-  elBigMsg.innerHTML = `
-  <div class="outcome-title ${chosenPath}">
-    ${
-      chosenPath === 'bold'
-        ? '<span class="icon-bold">⚡</span> Bold Path'
-        : '<span class="icon-cons">🛡️</span> Conservative Path'
-    }
-  </div>
-  <div class="outcome-sub ${isFavourable ? 'good' : 'bad'}">
-    ${isFavourable ? 'Favourable Outcome' : 'Unfavourable Outcome'}
-  </div>
-  <div class="outcome-desc">
-    ${text}
-  </div>
-`;
-
   elOutcomeWrap.style.display = 'block';
-  // PREMIUM PACK — animate outcome wrap
-requestAnimationFrame(() => {
-  elOutcomeWrap.classList.add('show');
-});
-  const cls = isFavourable ? 'goodBox' : 'badBox';
-  elOutcomeBox.className = 'outcome ' + cls;
+  requestAnimationFrame(() => {
+    elOutcomeWrap.classList.add('show');
+  });
 
-  // percentage based on MC change
-  const pctAbs = ((newMC - oldMC) / oldMC) * 100;
-const pctStr = (pctAbs >= 0 ? '+' : '') + pctAbs.toFixed(0) + '%';
+  /* ====== FIX #2: Correct Titles / Colours ====== */
+  elBigMsg.className = 'bigMsg ' + (isGain ? 'good' : 'bad');
+  const headerTitle =
+    chosenPath === 'bold'
+      ? '<span class="icon-bold">⚡</span> Bold Path'
+      : '<span class="icon-cons">🛡️</span> Conservative Path';
 
-  const priceLine = `Price: <b>${fmtUSD(oldMC/SUPPLY,8)}</b> → <b>${fmtUSD(price,8)}</b>`;
-  const mcLine = `Market Cap: <b>${fmtUSD(oldMC)}</b> → <b>${fmtUSD(newMC)}</b>`;
-  const focusLine = scenario ? `<div class="muted" style="margin-top:10px;">${scenario.focus || ''}</div>` : '';
+  const headerOutcome =
+    isGain ? 'Favourable Outcome' : 'Unfavourable Outcome';
+
+  elBigMsg.innerHTML = `
+    <div class="outcome-title ${chosenPath}">
+      ${headerTitle}
+    </div>
+    <div class="outcome-sub ${isGain ? 'good' : 'bad'}">
+      ${headerOutcome}
+    </div>
+    <div class="outcome-desc">${text}</div>
+  `;
+
+  /* ====== FIX #3: Correct MC & Price formatting ====== */
+  const priceLine =
+    `Price: <b>${fmtUSD(oldMC / SUPPLY, 8)}</b> → <b>${fmtUSD(newMC / SUPPLY,8)}</b>`;
+
+  const mcLine =
+    `Market Cap: <b>${fmtUSD(oldMC)}</b> → <b>${fmtUSD(newMC)}</b>`;
+
+  const focusLine =
+    scenario ? `<div class="muted" style="margin-top:10px;">${scenario.focus || ''}</div>` : '';
+
+  elOutcomeBox.className = 'outcome ' + (isGain ? 'goodBox' : 'badBox');
 
   elOutcomeBox.innerHTML = `
-    <div class="big">${isFavourable ? 'Gain' : 'Loss'} &nbsp; (${pctStr})</div>
+    <div class="big">${isGain ? 'Gain' : 'Loss'} &nbsp; (${pctStr})</div>
     <div>${priceLine}</div>
     <div class="muted">${mcLine}</div>
     ${focusLine}
   `;
 
-  if (price <= 0){
+  /* ====== Buttons ====== */
+  if (newMC <= 0){
     elNext.style.display = 'none';
     elRestart.style.display = 'inline-block';
   } else {
