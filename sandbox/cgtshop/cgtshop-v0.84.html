@@ -682,6 +682,15 @@
   color: #9F6CFF;
   margin-right: 6px;
 }
+html, body {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.card {
+  overflow-x: hidden !important;
+}
 </style>
 </head>
 <body>
@@ -1266,6 +1275,9 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
   }
 
   price = newMC / SUPPLY;
+// ---- SAFETY CLAMPS ----
+if (!isFinite(newMC) || newMC < 0) newMC = 0;
+if (!isFinite(price) || price < 0) price = 0;
   showOutcome(isFavourable, multDisplayed, text, scenario, oldMC, newMC);
 }
 
@@ -1316,9 +1328,9 @@ requestAnimationFrame(() => {
   const cls = isFavourable ? 'goodBox' : 'badBox';
   elOutcomeBox.className = 'outcome ' + cls;
 
-  // percentage purely from multiplier (5.0× -> ±500%)
-  const pctAbs = mult * 100;
-  const pctStr = (isFavourable ? '+' : '-') + pctAbs.toFixed(0) + '%';
+  // percentage based on MC change
+  const pctAbs = ((newMC - oldMC) / oldMC) * 100;
+const pctStr = (pctAbs >= 0 ? '+' : '') + pctAbs.toFixed(0) + '%';
 
   const priceLine = `Price: <b>${fmtUSD(oldMC/SUPPLY,8)}</b> → <b>${fmtUSD(price,8)}</b>`;
   const mcLine = `Market Cap: <b>${fmtUSD(oldMC)}</b> → <b>${fmtUSD(newMC)}</b>`;
