@@ -1238,36 +1238,45 @@ if (roll < chance){
       newMC = oldMC * mult;
     }
 
-  } else {
-    // UNFAVOURABLE
+} else {
+  // ==============================
+  //  UNFAVOURABLE OUTCOME
+  // ==============================
 
-    if (chosenPath === 'bold') {
-      if (mult < 2.0){
-        const remaining = (2.0 - mult);
-        newMC = oldMC * remaining;
-      } } else {
-  /* ===========================================================
-     BOLD LOSS — Tuning-driven wipeout curve (from tuning file)
-  ============================================================ */
-  const L = window.CGT_TUNING.boldLoss;
+  if (chosenPath === 'bold') {
 
-  const t = (mult - L.wipeoutStartMult) /
-            (L.wipeoutEndMult - L.wipeoutStartMult);
+    // ========= Bold Loss =========
+    if (mult < 2.0) {
+      // simple linear negative remaining for 1.1–1.9×
+      const remaining = (2.0 - mult);
+      newMC = oldMC * remaining;
 
-  const tt = Math.max(0, Math.min(1, t));
-
-  const loss = L.startLoss + (L.endLoss - L.startLoss) * tt;
-
-  const remaining = Math.max(0, 1 - loss);
-
-  newMC = oldMC * remaining;
-}
     } else {
-      // Conservative symmetrical loss: -10% … -80%
-      const lossPct = mult;
-      newMC = oldMC * (1 - lossPct);
+      // ======= Wipeout Curve (tuning-driven) =======
+      const L = window.CGT_TUNING.boldLoss;
+
+      const t = (mult - L.wipeoutStartMult) /
+                (L.wipeoutEndMult - L.wipeoutStartMult);
+
+      const tt = Math.max(0, Math.min(1, t));
+
+      const loss = L.startLoss + (L.endLoss - L.startLoss) * tt;
+
+      const remaining = Math.max(0, 1 - loss);
+
+      newMC = oldMC * remaining;
     }
+
+  } else {
+
+    // ========= Conservative Loss =========
+    // mult = 0.1 → -10%
+    // mult = 0.8 → -80%
+    const lossPct = mult;
+    newMC = oldMC * (1 - lossPct);
+
   }
+}
 
   // Safety clamps
   if (!isFinite(newMC) || newMC < 0) newMC = 0;
