@@ -1249,6 +1249,12 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
 /* ========= Show Outcome ========= */
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC, tierUsed){
   hasOutcomeShown = true;
+/* ===== RESET GOLD MODE BEFORE APPLYING ANY NEW STYLING ===== */
+elOutcomeBox.style.borderColor = "";
+elOutcomeBox.style.color = "";
+elOutcomeBox.style.background = "";
+
+elBigMsg.style.color = "";
 
   // Realised change from MC, not slider
   const mcDiff = newMC - oldMC;
