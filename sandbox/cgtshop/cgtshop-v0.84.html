@@ -1134,13 +1134,51 @@ function resolveDecision(){
 
   let isFavourable;
 
+/* ======================================================
+   FINAL PROBABILITY LOGIC — v0.84
+====================================================== */
+let isFavourable;
+
 if (window.TEST_MODE === true) {
-  // Test Mode — raw slider value only
+  // Test mode uses HUD slider only
   isFavourable = Math.random() < (bias / 100);
+
 } else {
-  // Normal game logic (curve/band/tone will be added here later)
-  isFavourable = Math.random() < (bias / 100);
+
+  if (chosenPath === "conservative") {
+
+    /* -------------------------------
+       CONSERVATIVE — 8 slices (C1–C8)
+       Probabilities: 85 → 65
+       ------------------------------- */
+    const frac = (mult - 0.10) / 0.70;       // map 0.10–0.80 → 0–1
+    let slice = Math.floor(frac * 8);        // 0–7
+    slice = Math.max(0, Math.min(7, slice));
+
+    const consProbs = [85, 82, 79, 76, 73, 70, 68, 65];
+    const p = consProbs[slice] / 100;
+
+    isFavourable = Math.random() < p;
+
+  } else {
+    /* -------------------------------
+       BOLD — 39 slices (1.1 → 5.0)
+       Probabilities: 80 → 50
+       ------------------------------- */
+    const frac = (mult - 1.1) / (5.0 - 1.1);    // map 1.1–5.0 → 0–1
+    let slice = Math.floor(frac * 39);          // 0–38
+    slice = Math.max(0, Math.min(38, slice));
+
+    const boldStart = 80;
+    const boldEnd   = 50;
+    const step = (boldStart - boldEnd) / 38;
+
+    const p = (boldStart - slice * step) / 100;
+
+    isFavourable = Math.random() < p;
+  }
 }
+
   const s = currentScenario;
 
   let outcomeText = '';
