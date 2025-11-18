@@ -1201,6 +1201,7 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
   const oldMC = mc();
   const mult = multDisplayed;
   let newMC = oldMC;
+  let tierUsed = null;   // NEW — store 2x / 5x / 10x / 25x for UI
 
   /* ======================================================
      FAVOURABLE OUTCOMES
@@ -1226,19 +1227,20 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
       const jpRoll = Math.random() * 100;
       const jpThreshold = jackpotChances[sliceIndex];
 
-      if (jpRoll < jpThreshold){
+     if (jpRoll < jpThreshold){
 
-        // Determine jackpot tier
-        const tierRoll = Math.random() * 100;
-        let tier = 2;
+    const tierRoll = Math.random() * 100;
+    let tier = 2;
 
-        if (tierRoll < 10)       tier = 25; // 10%
-        else if (tierRoll < 30)  tier = 10; // next 20%
-        else if (tierRoll < 60)  tier = 5;  // next 30%
-        else                     tier = 2;  // final 40%
+    if (tierRoll < 10)       tier = 25;
+    else if (tierRoll < 30)  tier = 10;
+    else if (tierRoll < 60)  tier = 5;
+    else                     tier = 2;
 
-        const jackpotBonus = baseGain * tier;
-        newMC = oldMC + baseGain + jackpotBonus;
+    tierUsed = tier;   // NEW — UI needs this
+
+    const bonus = baseGain * tier;
+    newMC = oldMC + baseGain + bonus;
 
       } else {
         // No jackpot → normal conservative favourable
@@ -1270,7 +1272,8 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
 
     } else {
       // conservative symmetrical loss
-      newMC = oldMC / mult;
+      const lossPct = mult;       // 0.1 → 10% loss
+newMC = oldMC * (1 - lossPct);
     }
   }
 
@@ -1278,10 +1281,10 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
 // ---- SAFETY CLAMPS ----
 if (!isFinite(newMC) || newMC < 0) newMC = 0;
 if (!isFinite(price) || price < 0) price = 0;
-  showOutcome(isFavourable, multDisplayed, text, scenario, oldMC, newMC);
+  showOutcome(isFavourable, multDisplayed, text, scenario, oldMC, newMC, tierUsed);
 }
 
-function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
+function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC, tierUsed){
   hasOutcomeShown = true;
 
   /* ====== FIX #1: Correct Gain/Loss detection ====== */
@@ -1308,6 +1311,22 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
   elControls.style.display = 'none';
 
   elOutcomeWrap.style.display = 'block';
+// GOLD MODE for boosted favourable result
+if (tierUsed){
+  
+  // Title becomes gold
+  const titleEl = elBigMsg.querySelector('.outcome-title');
+  if (titleEl) titleEl.style.color = '#F3BD12';
+
+  // Subline becomes gold
+  const subEl = elBigMsg.querySelector('.outcome-sub');
+  if (subEl) subEl.style.color = '#F3BD12';
+
+  // Outcome box becomes gold tinted
+  elOutcomeBox.style.borderColor = '#F3BD12';
+  elOutcomeBox.style.color = '#F3BD12';
+  elOutcomeBox.style.background = '#1c1505';  // subtle gold-tinted black
+}
   requestAnimationFrame(() => {
     elOutcomeWrap.classList.add('show');
   });
@@ -1319,18 +1338,34 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC){
       ? '<span class="icon-bold">⚡</span> Bold Path'
       : '<span class="icon-cons">🛡️</span> Conservative Path';
 
-  const headerOutcome =
-    isGain ? 'Favourable Outcome' : 'Unfavourable Outcome';
+  /* ====== FIX #2: Correct Titles / Colours ====== */
+elBigMsg.className = 'bigMsg ' + (isGain ? 'good' : 'bad');
 
-  elBigMsg.innerHTML = `
-    <div class="outcome-title ${chosenPath}">
-      ${headerTitle}
-    </div>
-    <div class="outcome-sub ${isGain ? 'good' : 'bad'}">
-      ${headerOutcome}
-    </div>
-    <div class="outcome-desc">${text}</div>
-  `;
+const headerTitle =
+  chosenPath === 'bold'
+    ? '<span class="icon-bold">⚡</span> Bold Path'
+    : '<span class="icon-cons">🛡️</span> Conservative Path';
+
+/* NEW: If tierUsed exists → change to “25× Favourable Outcome” etc */
+let headerOutcome = '';
+
+if (!isGain) {
+  headerOutcome = 'Unfavourable Outcome';
+} else {
+  headerOutcome = tierUsed
+    ? `${tierUsed}× Favourable Outcome`
+    : 'Favourable Outcome';
+}
+
+elBigMsg.innerHTML = `
+  <div class="outcome-title ${chosenPath}">
+    ${headerTitle}
+  </div>
+  <div class="outcome-sub ${isGain ? 'good' : 'bad'}">
+    ${headerOutcome}
+  </div>
+  <div class="outcome-desc">${text}</div>
+`;
 
   /* ====== FIX #3: Correct MC & Price formatting ====== */
   const priceLine =
