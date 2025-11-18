@@ -776,6 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
 /* ========= Core state ========= */
 const SUPPLY = 350_000_000;
 let day = 1;
@@ -911,7 +912,7 @@ async function maybeShowClueBlocking(){
 /* ========= Bands → slider ranges ========= */
 function getBandRange(subBand, path){
   if (path === 'conservative') {
-    // Conservative slider: 0.10 → 0.80 in 0.01 slices
+    // Conservative slider: 0.10 → 0.80 → interpreted as ±10–80%
     return { min: 0.10, max: 0.80, step: 0.01 };
   }
 
@@ -964,22 +965,19 @@ function renderSlider(range, path){
   input.addEventListener('input', updateLabel);
   updateLabel();
   wrap.appendChild(input);
+
   // Tap-anywhere-to-set slider value
   wrap.addEventListener('click', (e) => {
-    // If user taps directly on the thumb, let the native drag behaviour handle it
-    if (e.target === input) return;
+    if (e.target === input) return; // native drag
 
     const rect = input.getBoundingClientRect();
     let ratio = (e.clientX - rect.left) / rect.width;
 
-    // Clamp between 0 and 1
     if (ratio < 0) ratio = 0;
     if (ratio > 1) ratio = 1;
 
-    // Slider is visually mirrored for conservative path,
-    // so reverse the ratio so tap position feels intuitive.
     if (path === 'conservative') {
-      ratio = 1 - ratio;
+      ratio = 1 - ratio; // mirrored visually
     }
 
     const min = parseFloat(range.min);
@@ -988,7 +986,6 @@ function renderSlider(range, path){
 
     let value = min + ratio * (max - min);
 
-    // Snap to step
     if (step > 0) {
       value = Math.round(value / step) * step;
     }
@@ -996,12 +993,10 @@ function renderSlider(range, path){
     input.value = value.toFixed(1);
     updateLabel();
 
-    // Fire an input event so any listeners stay in sync
     const evt = new Event('input', { bubbles: true });
     input.dispatchEvent(evt);
   });
-  
-  // Conservative path: visually reverse slider
+
   if (path === 'conservative'){
     wrap.style.transform = 'scaleX(-1)';
   } else {
@@ -1034,7 +1029,6 @@ function resetDecisionUI(){
   sliderInput = null;
   elCard.classList.remove('bold-mode','cons-mode');
 
-  // Restore original scenario UI
   if (currentScenario) {
     elTitle.className = 'headline';
     elTitle.textContent = `Founders · ${currentScenario.focus || ''}`;
@@ -1048,7 +1042,6 @@ function choosePath(path, range){
   chosenPath = path;
   elChoiceRow.style.display = 'none';
 
-  // Mode classes
   if (path === 'bold'){
     elBoldBtn.classList.add('selected');
     elConsBtn.classList.remove('selected');
@@ -1061,7 +1054,6 @@ function choosePath(path, range){
     elCard.classList.remove('bold-mode');
   }
 
-  // Replace UI headline + description
   if (currentScenario) {
     elTitle.classList.remove('headline');
     elTitle.className = 'path-title ' + (path === 'bold' ? 'bold' : 'cons');
@@ -1085,11 +1077,11 @@ async function newScenario(){
   hasOutcomeShown = false;
   resetDecisionUI();
 
-    elOutcomeWrap.style.display = 'none';
+  elOutcomeWrap.style.display = 'none';
+  elOutcomeWrap.classList.remove('show');
   elTitle.textContent = 'Loading…';
   elDesc.textContent = '';
 
-  // Restore panel for the new decision
   elControls.style.display = 'block';
   elControls.style.opacity = 0;
 
@@ -1098,7 +1090,6 @@ async function newScenario(){
   currentScenario = pickScenarioForMC(mc(), founderScenarios);
   const s = currentScenario;
 
-  // reset title animation
   elTitle.style.animation = 'none';
   void elTitle.offsetWidth;
   elTitle.style.animation = null;
@@ -1108,10 +1099,8 @@ async function newScenario(){
 
   await sleep(1600 + 250);
 
-  // Only context on main card
   await typewrite(elDesc, s.context || '', 26);
 
-  // bias HUD meta
   if (elMetaRef)  elMetaRef.textContent  = s.subBand || '—';
   if (elMetaTone) elMetaTone.textContent = s.tone || '—';
   if (elMetaMC)   elMetaMC.textContent   = s.marketCap || '—';
@@ -1120,7 +1109,7 @@ async function newScenario(){
   elControls.style.opacity = 1;
 
   elConsBtn.onclick = () => choosePath('conservative', getBandRange(s.subBand, 'conservative'));
-elBoldBtn.onclick = () => choosePath('bold', getBandRange(s.subBand, 'bold'));
+  elBoldBtn.onclick = () => choosePath('bold', getBandRange(s.subBand, 'bold'));
 }
 
 /* ========= Outcome logic ========= */
@@ -1143,46 +1132,30 @@ function resolveDecision(){
 
   let isFavourable;
 
-  /* ======================================================
-     FINAL PROBABILITY LOGIC — v0.84
-  ====================================================== */
   if (window.TEST_MODE === true) {
-
-    // Test mode — HUD slider only
     isFavourable = Math.random() < (bias / 100);
-
   } else {
-
     if (chosenPath === "conservative") {
-
-      // Conservative: 0.10 → 0.80 mapped to 8 slices
+      // 0.10 → 0.80 mapped to 8 slices
       const frac = (mult - 0.10) / 0.70;
       let slice = Math.floor(frac * 8);
       slice = Math.max(0, Math.min(7, slice));
-
       const consProbs = [85, 82, 79, 76, 73, 70, 68, 65];
       const p = consProbs[slice] / 100;
-
       isFavourable = Math.random() < p;
-
     } else {
-
       // Bold: 1.1 → 5.0 mapped to 39 slices (80% → 50%)
       const frac = (mult - 1.1) / (5.0 - 1.1);
       let slice = Math.floor(frac * 39);
       slice = Math.max(0, Math.min(38, slice));
-
       const boldStart = 80;
       const boldEnd   = 50;
       const step = (boldStart - boldEnd) / 38;
-
       const p = (boldStart - slice * step) / 100;
-
       isFavourable = Math.random() < p;
     }
   }
 
-  // Pick outcome text
   const s = currentScenario;
   let outcomeText = '';
 
@@ -1192,75 +1165,63 @@ function resolveDecision(){
     outcomeText = isFavourable ? (s.outcomeC || '') : (s.outcomeD || '');
   }
 
-  // Run outcome
   applyOutcome(isFavourable, mult, outcomeText, s);
   locked = true;
 }
 
+/* ========= Apply Outcome =========
+   Conservative mult (0.1–0.8) = ±10–80% change
+   Bold mult (>=1.1) = direct × multiplier
+==================================== */
 function applyOutcome(isFavourable, multDisplayed, text, scenario){
   const oldMC = mc();
   const mult = multDisplayed;
   let newMC = oldMC;
-  let tierUsed = null;   // NEW — store 2x / 5x / 10x / 25x for UI
+  let tierUsed = null;   // 2 / 5 / 10 / 25 for UI
 
-  /* ======================================================
-     FAVOURABLE OUTCOMES
-     ====================================================== */
   if (isFavourable){
 
-    /* =============================
-       CONSERVATIVE JACKPOT LOGIC
-       ============================= */
     if (chosenPath === 'conservative') {
+      // magnitude of change: 0.1 → 10%, 0.8 → 80%
+      const changePct = mult;
+      const baseGain = oldMC * changePct;
 
-      // 1) Base gain (normal favourable math)
-      const baseGain = oldMC * (mult - 1); // 1.30 => +0.30
-
-      // Convert slider to slice index 0–7 (C1–C8)
-      // Conservative slider is 0.10 → 0.80
+      // slice index 0–7
       const frac = (mult - 0.10) / 0.70;
       let sliceIndex = Math.floor(frac * 8);
       sliceIndex = Math.max(0, Math.min(7, sliceIndex));
 
-      const jackpotChances = [25,22,20,18,17,16,15,14]; // percent
+      const jackpotChances = [25,22,20,18,17,16,15,14]; // %
 
       const jpRoll = Math.random() * 100;
       const jpThreshold = jackpotChances[sliceIndex];
 
-     if (jpRoll < jpThreshold){
+      if (jpRoll < jpThreshold){
+        const tierRoll = Math.random() * 100;
+        let tier = 2;
+        if (tierRoll < 10)       tier = 25;
+        else if (tierRoll < 30)  tier = 10;
+        else if (tierRoll < 60)  tier = 5;
+        else                     tier = 2;
 
-    const tierRoll = Math.random() * 100;
-    let tier = 2;
+        tierUsed = tier;
 
-    if (tierRoll < 10)       tier = 25;
-    else if (tierRoll < 30)  tier = 10;
-    else if (tierRoll < 60)  tier = 5;
-    else                     tier = 2;
-
-    tierUsed = tier;   // NEW — UI needs this
-
-    const bonus = baseGain * tier;
-    newMC = oldMC + baseGain + bonus;
-
+        const bonus = baseGain * tier;
+        newMC = oldMC + baseGain + bonus;
       } else {
-        // No jackpot → normal conservative favourable
-        newMC = oldMC * mult;
+        // normal conservative favourable
+        newMC = oldMC + baseGain;
       }
 
     } else {
-      /* =============================
-         NORMAL BOLD FAVOURABLE
-         ============================= */
+      // Bold favourable: direct multiplier
       newMC = oldMC * mult;
     }
 
   } else {
-    /* ======================================================
-       UNFAVOURABLE OUTCOMES
-       (unchanged — jackpots never apply here)
-       ====================================================== */
-    if (chosenPath === 'bold') {
+    // UNFAVOURABLE
 
+    if (chosenPath === 'bold') {
       if (mult < 2.0){
         const remaining = (2.0 - mult);
         newMC = oldMC * remaining;
@@ -1269,32 +1230,35 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
         const remaining = Math.max(0, 1 - loss);
         newMC = oldMC * remaining;
       }
-
     } else {
-      // conservative symmetrical loss
-      const lossPct = mult;       // 0.1 → 10% loss
-newMC = oldMC * (1 - lossPct);
+      // Conservative symmetrical loss: -10% … -80%
+      const lossPct = mult;
+      newMC = oldMC * (1 - lossPct);
     }
   }
 
+  // Safety clamps
+  if (!isFinite(newMC) || newMC < 0) newMC = 0;
+
   price = newMC / SUPPLY;
-// ---- SAFETY CLAMPS ----
-if (!isFinite(newMC) || newMC < 0) newMC = 0;
-if (!isFinite(price) || price < 0) price = 0;
+  if (!isFinite(price) || price < 0) price = 0;
+
   showOutcome(isFavourable, multDisplayed, text, scenario, oldMC, newMC, tierUsed);
 }
 
+/* ========= Show Outcome ========= */
 function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC, tierUsed){
   hasOutcomeShown = true;
 
-  /* ====== FIX #1: Correct Gain/Loss detection ====== */
+  // Realised change from MC, not slider
   const mcDiff = newMC - oldMC;
-  const pctChange = (mcDiff / oldMC) * 100;
+  const pctChange = oldMC === 0 ? 0 : (mcDiff / oldMC) * 100;
   const isGain = mcDiff >= 0;
-
   const pctStr = (isGain ? "+" : "") + pctChange.toFixed(0) + "%";
 
-  /* ====== UI State Updates (unchanged) ====== */
+  const isJackpot = isGain && !!tierUsed;
+
+  // UI state
   elTitle.classList.add('vanish');
   elDesc.classList.add('vanish');
   elCard.classList.add('outcome-mode');
@@ -1311,58 +1275,38 @@ function showOutcome(isFavourable, mult, text, scenario, oldMC, newMC, tierUsed)
   elControls.style.display = 'none';
 
   elOutcomeWrap.style.display = 'block';
-// GOLD MODE for boosted favourable result
-if (tierUsed){
-  
-  // Title becomes gold
-  const titleEl = elBigMsg.querySelector('.outcome-title');
-  if (titleEl) titleEl.style.color = '#F3BD12';
-
-  // Subline becomes gold
-  const subEl = elBigMsg.querySelector('.outcome-sub');
-  if (subEl) subEl.style.color = '#F3BD12';
-
-  // Outcome box becomes gold tinted
-  elOutcomeBox.style.borderColor = '#F3BD12';
-  elOutcomeBox.style.color = '#F3BD12';
-  elOutcomeBox.style.background = '#1c1505';  // subtle gold-tinted black
-}
   requestAnimationFrame(() => {
     elOutcomeWrap.classList.add('show');
   });
 
-  
+  // Header + colours
+  elBigMsg.className = 'bigMsg ' + (isGain ? 'good' : 'bad');
 
-  /* ====== FIX #2: Correct Titles / Colours ====== */
-elBigMsg.className = 'bigMsg ' + (isGain ? 'good' : 'bad');
+  const headerTitle =
+    chosenPath === 'bold'
+      ? '<span class="icon-bold">⚡</span> Bold Path'
+      : '<span class="icon-cons">🛡️</span> Conservative Path';
 
-const headerTitle =
-  chosenPath === 'bold'
-    ? '<span class="icon-bold">⚡</span> Bold Path'
-    : '<span class="icon-cons">🛡️</span> Conservative Path';
+  let headerOutcome;
+  if (!isGain) {
+    headerOutcome = 'Unfavourable Outcome';
+  } else {
+    headerOutcome = isJackpot
+      ? `${tierUsed}× Favourable Outcome`
+      : 'Favourable Outcome';
+  }
 
-/* NEW: If tierUsed exists → change to “25× Favourable Outcome” etc */
-let headerOutcome = '';
+  elBigMsg.innerHTML = `
+    <div class="outcome-title ${chosenPath}">
+      ${headerTitle}
+    </div>
+    <div class="outcome-sub ${isGain ? 'good' : 'bad'}">
+      ${headerOutcome}
+    </div>
+    <div class="outcome-desc">${text}</div>
+  `;
 
-if (!isGain) {
-  headerOutcome = 'Unfavourable Outcome';
-} else {
-  headerOutcome = tierUsed
-    ? `${tierUsed}× Favourable Outcome`
-    : 'Favourable Outcome';
-}
-
-elBigMsg.innerHTML = `
-  <div class="outcome-title ${chosenPath}">
-    ${headerTitle}
-  </div>
-  <div class="outcome-sub ${isGain ? 'good' : 'bad'}">
-    ${headerOutcome}
-  </div>
-  <div class="outcome-desc">${text}</div>
-`;
-
-  /* ====== FIX #3: Correct MC & Price formatting ====== */
+  // MC / price lines
   const priceLine =
     `Price: <b>${fmtUSD(oldMC / SUPPLY, 8)}</b> → <b>${fmtUSD(newMC / SUPPLY,8)}</b>`;
 
@@ -1381,7 +1325,19 @@ elBigMsg.innerHTML = `
     ${focusLine}
   `;
 
-  /* ====== Buttons ====== */
+  // GOLD jackpot styling (only on gain + tierUsed)
+  if (isJackpot){
+    const titleEl = elBigMsg.querySelector('.outcome-title');
+    const subEl = elBigMsg.querySelector('.outcome-sub');
+
+    if (titleEl) titleEl.style.color = '#F3BD12';
+    if (subEl) subEl.style.color = '#F3BD12';
+
+    elOutcomeBox.style.borderColor = '#F3BD12';
+    elOutcomeBox.style.color = '#F3BD12';
+    elOutcomeBox.style.background = '#1c1505';
+  }
+
   if (newMC <= 0){
     elNext.style.display = 'none';
     elRestart.style.display = 'inline-block';
@@ -1392,21 +1348,15 @@ elBigMsg.innerHTML = `
 
   updateHUD();
 }
-  /* PREMIUM PACK — auto scroll to center outcome on mobile
-setTimeout(() => {
-  const rect = elOutcomeWrap.getBoundingClientRect();
-  const desired = window.pageYOffset + rect.top - 80; 
-  window.scrollTo({ top: desired, behavior: 'smooth' });
-}, 220); */
 
 /* ========= Flow ========= */
 function nextDay(){
   if (price <= 0) return;
   elOutcomeWrap.classList.remove('show');
   elTitle.classList.remove('vanish');
-elDesc.classList.remove('vanish');
-elCard.classList.remove('outcome-mode');
-document.querySelector('.stage').classList.remove('outcome-shift');
+  elDesc.classList.remove('vanish');
+  elCard.classList.remove('outcome-mode');
+  document.querySelector('.stage').classList.remove('outcome-shift');
   day += 1;
   updateHUD();
   newScenario();
@@ -1415,9 +1365,9 @@ document.querySelector('.stage').classList.remove('outcome-shift');
 function restartGame(){
   elOutcomeWrap.classList.remove('show');
   elTitle.classList.remove('vanish');
-elDesc.classList.remove('vanish');
-elCard.classList.remove('outcome-mode');
-document.querySelector('.stage').classList.remove('outcome-shift');
+  elDesc.classList.remove('vanish');
+  elCard.classList.remove('outcome-mode');
+  document.querySelector('.stage').classList.remove('outcome-shift');
   day = 1;
   price = 10_000 / SUPPLY;
   updateHUD();
