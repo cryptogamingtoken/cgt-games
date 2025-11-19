@@ -181,7 +181,8 @@ window.CGT_SCENARIOS.founder = [
     outcomeB: "Media spotlight exposes unfinished systems; reputation strains under scrutiny.",
     outcomeC: "Controlled messaging cements perception of discipline and steady leadership.",
     outcomeD: "Cautious tone appears dull; press loses interest."
-  }
+  },
+
   /* ============================================
      F-B2-0.2 — Marketing Trust Fork
   ============================================ */
@@ -343,7 +344,8 @@ window.CGT_SCENARIOS.founder = [
     outcomeC: "Visible continuity ensures calm transition to next era.",
     outcomeD: "Founder dependency slows true decentralisation and future growth."
   },
-    /* ============================================
+
+  /* ============================================
      F-B3-0.1 — Refocus Fork
   ============================================ */
   {
@@ -522,7 +524,8 @@ window.CGT_SCENARIOS.founder = [
     outcomeC: "Silent logging by DAO Mirror underscores natural closure.",
     outcomeD: "Unspoken shift causes lingering uncertainty about leadership."
   },
-    /* ============================================
+
+  /* ============================================
      F-B4-0.1 — Transition Guardianship
   ============================================ */
   {
@@ -701,7 +704,8 @@ window.CGT_SCENARIOS.founder = [
     outcomeC: "Silent autonomy proves the system’s true independence.",
     outcomeD: "Unacknowledged milestone leaves confusion about completion."
   },
-    /* ============================================
+
+  /* ============================================
      F-B5-SignOff — DAO Supersession – Founder Sign-Off
   ============================================ */
   {
@@ -718,5 +722,5 @@ window.CGT_SCENARIOS.founder = [
     outcomeC: "Silent disappearance demonstrates seamless continuity and decentralised maturity.",
     outcomeD: "Unannounced exit causes temporary uncertainty and narrative vacuum."
   }
-];
 
+];
