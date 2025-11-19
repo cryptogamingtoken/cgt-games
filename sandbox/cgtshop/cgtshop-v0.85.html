@@ -1216,32 +1216,38 @@ function applyOutcome(isFavourable, multDisplayed, text, scenario){
       let sliceIndex = Math.floor(frac * 8);
       sliceIndex = Math.max(0, Math.min(7, sliceIndex));
 
-    /* === Jackpot logic from tuning file === */
-const JC = window.CGT_TUNING.jackpotConservative;
+    /* === Jackpot logic from tuning file (aligned with conservativeJackpot) === */
+    const JC = window.CGT_TUNING.conservativeJackpot;
 
-const sliceCount = JC.chances.length;
-const frac2 = (mult - 0.10) / 0.70;
-let i = Math.floor(frac2 * sliceCount);
-i = Math.max(0, Math.min(sliceCount - 1, i));
+    const sliceCount = JC.triggerPercents.length;
+    const frac2 = (mult - 0.10) / 0.70; // 0.10–0.80 range
+    let i = Math.floor(frac2 * sliceCount);
+    i = Math.max(0, Math.min(sliceCount - 1, i));
 
-const chance = JC.chances[i];
-const roll = Math.random() * 100;
+    const chance = JC.triggerPercents[i];   // % chance at this slice
+    const roll = Math.random() * 100;
 
-if (roll < chance){
-  const tierRoll = Math.random() * 100;
-  let tier = 2;
-  if (tierRoll < JC.distribution[25]) tier = 25;
-  else if (tierRoll < JC.distribution[25] + JC.distribution[10]) tier = 10;
-  else if (tierRoll < JC.distribution[25] + JC.distribution[10] + JC.distribution[5]) tier = 5;
-  else tier = 2;
+    if (roll < chance) {
+      // Weighted tier pick from JC.tiers
+      const totalWeight = JC.tiers.reduce((sum, t) => sum + t.weight, 0);
+      let pick = Math.random() * totalWeight;
+      let tier = 2;
 
-  tierUsed = tier;
+      for (const t of JC.tiers) {
+        if (pick < t.weight) {
+          tier = t.tier;
+          break;
+        }
+        pick -= t.weight;
+      }
 
-  const bonus = baseGain * tier;
-  newMC = oldMC + baseGain + bonus;
-} else {
-  newMC = oldMC + baseGain;
-}
+      tierUsed = tier;
+
+      const bonus = baseGain * tier;
+      newMC = oldMC + baseGain + bonus;
+    } else {
+      newMC = oldMC + baseGain;
+    }
 
     } else {
       // Bold favourable: direct multiplier
@@ -1262,15 +1268,15 @@ if (roll < chance){
       newMC = oldMC * remaining;
 
     } else {
-      // ======= Wipeout Curve (tuning-driven) =======
+      // ======= Wipeout Curve (tuning-driven, matching boldLoss) =======
       const L = window.CGT_TUNING.boldLoss;
 
-      const t = (mult - L.wipeoutStartMult) /
-                (L.wipeoutEndMult - L.wipeoutStartMult);
+      // Map mult 2.0 → 5.0 into t in [0,1]
+      const tRaw = (mult - L.symmetricalEnd) / (L.wipeoutEndMult - L.symmetricalEnd);
+      const t = Math.max(0, Math.min(1, tRaw));
 
-      const tt = Math.max(0, Math.min(1, t));
-
-      const loss = L.startLoss + (L.endLoss - L.startLoss) * tt;
+      // Interpolate loss from 80% → 100%
+      const loss = L.wipeoutStartLoss + (L.wipeoutEndLoss - L.wipeoutStartLoss) * t;
 
       const remaining = Math.max(0, 1 - loss);
 
