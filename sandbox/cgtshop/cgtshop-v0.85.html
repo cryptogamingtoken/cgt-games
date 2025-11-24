@@ -1162,8 +1162,12 @@ const T = window.CGT_TUNING;
 if (window.TEST_MODE){
   isFavourable = Math.random() < (bias / 100);
 }
-else if (chosenPath === 'conservative'){
-  
+
+/* ================================
+   CONSERVATIVE PATH
+================================ */
+else if (chosenPath === 'conservative') {
+
   const frac = (mult - T.sliders.conservative.min) /
                (T.sliders.conservative.max - T.sliders.conservative.min);
 
@@ -1172,18 +1176,13 @@ else if (chosenPath === 'conservative'){
 
   const p = T.conservativeProbabilities.percents[slice] / 100;
   isFavourable = Math.random() < p;
+}
 
-/* ===== DESTINY OVERRIDE ===== */
-if (forcedOutcome === "favourable") {
-  isFavourable = true;
-  forcedOutcome = null;
-}
-else if (forcedOutcome === "unfavourable") {
-  isFavourable = false;
-  forcedOutcome = null;
-}
+/* ================================
+   BOLD PATH
+================================ */
 else {
-  // bold
+
   const frac = (mult - T.sliders.bold.min) /
                (T.boldLoss.wipeoutEndMult - T.sliders.bold.min);
 
@@ -1196,6 +1195,7 @@ else {
   const p = (T.boldProbabilities.start - slice * step) / 100;
   isFavourable = Math.random() < p;
 }
+
 /* ===== DESTINY OVERRIDE ===== */
 if (forcedOutcome === "favourable") {
   isFavourable = true;
@@ -1205,7 +1205,6 @@ else if (forcedOutcome === "unfavourable") {
   isFavourable = false;
   forcedOutcome = null;
 }
-
   const s = currentScenario;
   let outcomeText = '';
 
