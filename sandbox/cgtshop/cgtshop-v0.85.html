@@ -902,18 +902,24 @@ async function typewrite(el, text, speed=28){
   }
 }
 
-/* ========= Clue overlay ========= */
-async function maybeShowClueBlocking(){
-  const p = rand(1/7, 1/4);
-  if (Math.random() < p){
-    const msgs = [
-      "Community buzz rising",
-      "Regulatory fog ahead",
-      "Infra feels solid",
-      "Liquidity thin",
-      "Streamer whispers…"
-    ];
-    elFlashInner.textContent = msgs[Math.floor(Math.random()*msgs.length)] || "Signal incoming…";
+/* ========= Destiny Hint System (v1) ========= */
+async function maybeShowClueBlocking() {
+  const triggerChance = rand(1/7, 1/4);   // uses your existing probability curve
+
+  if (Math.random() < triggerChance) {
+
+    // 50/50 split
+    const isBullish = Math.random() < 0.5;
+
+    if (isBullish) {
+      forcedOutcome = "favourable";
+      elFlashInner.textContent = "📈 Market 100% Bullish";
+    } else {
+      forcedOutcome = "unfavourable";
+      elFlashInner.textContent = "⚠️ Warning: Red Day Incoming";
+    }
+
+    // Show cinematic overlay
     elFlash.classList.add('show');
     await sleep(4600);
     elFlash.classList.remove('show');
@@ -1166,6 +1172,15 @@ else if (chosenPath === 'conservative'){
 
   const p = T.conservativeProbabilities.percents[slice] / 100;
   isFavourable = Math.random() < p;
+
+/* ===== DESTINY OVERRIDE ===== */
+if (forcedOutcome === "favourable") {
+  isFavourable = true;
+  forcedOutcome = null;
+}
+else if (forcedOutcome === "unfavourable") {
+  isFavourable = false;
+  forcedOutcome = null;
 }
 else {
   // bold
@@ -1180,6 +1195,15 @@ else {
 
   const p = (T.boldProbabilities.start - slice * step) / 100;
   isFavourable = Math.random() < p;
+}
+/* ===== DESTINY OVERRIDE ===== */
+if (forcedOutcome === "favourable") {
+  isFavourable = true;
+  forcedOutcome = null;
+}
+else if (forcedOutcome === "unfavourable") {
+  isFavourable = false;
+  forcedOutcome = null;
 }
 
   const s = currentScenario;
