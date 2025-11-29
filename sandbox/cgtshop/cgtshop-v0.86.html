@@ -800,6 +800,7 @@ let sliderInput = null;
 let hasOutcomeShown = false;
 let currentScenario = null;
 let forcedOutcome = null; // 'favourable' | 'unfavourable' | null
+let chosenStakeholder = "founder";   // default
 
 function mc(){ return price * SUPPLY; }
 function fmtUSD(n, d=8){
@@ -862,6 +863,11 @@ if (!Array.isArray(founderScenarios) || founderScenarios.length === 0){
     outcomeD:'Delays frustrate insiders who drift away, leaving the project isolated before momentum forms.'
   }];
 }
+
+/* ====== CORE DEV DATA (v0.86+) ====== */
+let coreDevScenarios = (window.CGT_SCENARIOS && window.CGT_SCENARIOS.coredev) || [];
+if (!Array.isArray(coreDevScenarios)) coreDevScenarios = [];
+let usedCoreDevSubBands = new Set();
 
 // v0.86 – track which Founder subBands have been shown this run
 let usedFounderSubBands = new Set();
@@ -1152,7 +1158,19 @@ async function newScenario(){
     await maybeShowClueBlocking();
 
   // v0.86 – pass in usedFounderSubBands so we don’t repeat until all are seen
-  currentScenario = pickScenarioForMC(mc(), founderScenarios, usedFounderSubBands);
+  /* === v0.86 stakeholder-aware === */
+let dataList = [];
+let usedSet = null;
+
+if (chosenStakeholder === "founder") {
+  dataList = founderScenarios;
+  usedSet = usedFounderSubBands;
+} else if (chosenStakeholder === "coredev") {
+  dataList = coreDevScenarios;
+  usedSet = usedCoreDevSubBands;
+}
+
+currentScenario = pickScenarioForMC(mc(), dataList, usedSet);
   const s = currentScenario;
 
   elTitle.style.animation = 'none';
