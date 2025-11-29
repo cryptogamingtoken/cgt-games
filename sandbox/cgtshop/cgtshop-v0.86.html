@@ -1177,7 +1177,11 @@ currentScenario = pickScenarioForMC(mc(), dataList, usedSet);
   void elTitle.offsetWidth;
   elTitle.style.animation = null;
 
-  const titleText = `Founders · ${s.focus || 'Founder Scenario'}`;
+  const nameMap = {
+  founder: "Founders",
+  coredev: "Core Devs"
+};
+elTitle.textContent = `${nameMap[chosenStakeholder]} · ${s.focus || ''}`;
   elTitle.textContent = titleText;
 
   await sleep(1600 + 250);
@@ -1525,6 +1529,10 @@ function restartGame(){
   if (usedFounderSubBands && typeof usedFounderSubBands.clear === 'function') {
     usedFounderSubBands.clear();
   }
+
+if (usedCoreDevSubBands && typeof usedCoreDevSubBands.clear === 'function') {
+  usedCoreDevSubBands.clear();
+}
 
   updateHUD();
   newScenario();
