@@ -412,7 +412,7 @@
   white-space: normal;
 }
 
-/* ⚡ Lightning for Bold 
+/* ⚡ Lightning for Bold */
 .path-title.bold::before {
   content: "⚡️";
   font-size: 26px;
@@ -1101,7 +1101,12 @@ function resetDecisionUI(){
 
   if (currentScenario) {
     elTitle.className = 'headline';
-    elTitle.textContent = `Founders · ${currentScenario.focus || ''}`;
+    const nameMap = {
+  founder: "Founders",
+  coredev: "Core Devs"
+};
+
+elTitle.textContent = `${nameMap[chosenStakeholder]} · ${currentScenario.focus || ''}`;
 
     elDesc.className = 'type';
     elDesc.textContent = currentScenario.context || '';
@@ -1169,6 +1174,10 @@ if (chosenStakeholder === "founder") {
   dataList = coreDevScenarios;
   usedSet = usedCoreDevSubBands;
 }
+if (!dataList.length) {
+  dataList = founderScenarios;
+  usedSet = usedFounderSubBands;
+}
 
 currentScenario = pickScenarioForMC(mc(), dataList, usedSet);
   const s = currentScenario;
@@ -1182,7 +1191,7 @@ currentScenario = pickScenarioForMC(mc(), dataList, usedSet);
   coredev: "Core Devs"
 };
 elTitle.textContent = `${nameMap[chosenStakeholder]} · ${s.focus || ''}`;
-  elTitle.textContent = titleText;
+
 
   await sleep(1600 + 250);
 
