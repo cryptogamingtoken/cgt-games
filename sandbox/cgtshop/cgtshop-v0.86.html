@@ -862,6 +862,9 @@ if (!Array.isArray(founderScenarios) || founderScenarios.length === 0){
   }];
 }
 
+// v0.86 – track which Founder subBands have been shown this run
+let usedFounderSubBands = new Set();
+
 /* ==== Ref MC helpers ==== */
 function parseRefMC(str){
   if(!str) return 0;
@@ -872,18 +875,57 @@ function parseRefMC(str){
   const mul = u==='K'?1e3:u==='M'?1e6:1e9;
   return v*mul;
 }
-function pickScenarioForMC(curMC, list){
-  let best = null, bestDiff = Infinity;
-  for(const s of list){
+
+// v0.86 – MC-aware + non-repeating scenario picker
+function pickScenarioForMC(curMC, list, usedSet){
+  if (!Array.isArray(list) || list.length === 0) return null;
+
+  // Fallback “no tracking” behaviour if no set provided
+  if (!usedSet) {
+    let best = null, bestDiff = Infinity;
+    for (const s of list) {
+      const ref = parseRefMC(s.marketCap);
+      if (!ref) continue;
+      const diff = Math.abs(ref - curMC);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = s;
+      }
+    }
+    return best || list[0];
+  }
+
+  // 1) Prefer unused scenarios
+  let pool = list.filter(s => s && !usedSet.has(s.subBand));
+
+  // 2) If everything has been used, reset and start fresh
+  if (pool.length === 0) {
+    if (typeof usedSet.clear === 'function') usedSet.clear();
+    pool = list.slice();
+  }
+
+  // 3) Pick nearest-by-MC from the current pool
+  let best = null;
+  let bestDiff = Infinity;
+
+  for (const s of pool) {
     const ref = parseRefMC(s.marketCap);
-    if(!ref) continue;
+    if (!ref) continue;
     const diff = Math.abs(ref - curMC);
-    if(diff < bestDiff){
+    if (diff < bestDiff) {
       bestDiff = diff;
       best = s;
     }
   }
-  return best || list[0];
+
+  if (!best) best = pool[0];
+
+  // 4) Mark as used for this run
+  if (best && best.subBand && typeof usedSet.add === 'function') {
+    usedSet.add(best.subBand);
+  }
+
+  return best;
 }
 
 /* ========= HUD ========= */
@@ -1106,9 +1148,10 @@ async function newScenario(){
   elControls.style.display = 'block';
   elControls.style.opacity = 0;
 
-  await maybeShowClueBlocking();
+    await maybeShowClueBlocking();
 
-  currentScenario = pickScenarioForMC(mc(), founderScenarios);
+  // v0.86 – pass in usedFounderSubBands so we don’t repeat until all are seen
+  currentScenario = pickScenarioForMC(mc(), founderScenarios, usedFounderSubBands);
   const s = currentScenario;
 
   elTitle.style.animation = 'none';
@@ -1455,8 +1498,15 @@ function restartGame(){
   elDesc.classList.remove('vanish');
   elCard.classList.remove('outcome-mode');
   document.querySelector('.stage').classList.remove('outcome-shift');
+
   day = 1;
   price = 10_000 / SUPPLY;
+
+  // v0.86 – new run = fresh scenario cycle
+  if (usedFounderSubBands && typeof usedFounderSubBands.clear === 'function') {
+    usedFounderSubBands.clear();
+  }
+
   updateHUD();
   newScenario();
 }
